@@ -39,6 +39,7 @@ final class PetView: NSView {
     private let body = CALayer()
     private let shell = CAShapeLayer()      // Clawd's body pixels
     private let legs = CAShapeLayer()       // two-frame scuttle
+    private let cap = CAShapeLayer()        // colored cap = stable session identity
     private let eyeLeft = CALayer()
     private let eyeRight = CALayer()
     private let glintLeft = CALayer()
@@ -92,6 +93,12 @@ final class PetView: NSView {
         legs.fillColor = Self.claudeOrange.cgColor
         body.addSublayer(legs)
 
+        // pixel baseball cap on the head, in the session's identity color
+        cap.frame = body.bounds
+        cap.path = Self.pixelPath(cells: Self.capCells)
+        cap.fillColor = Self.capColor(for: info.name).cgColor
+        body.addSublayer(cap)
+
         // eyes = the two ▄ cells of the TUI art (grid row 3, cols 2 & 8)
         for (eye, glint, col) in [(eyeLeft, glintLeft, 2), (eyeRight, glintRight, 8)] {
             let r = Self.cellRect(col: col, row: 3)
@@ -105,7 +112,7 @@ final class PetView: NSView {
             body.addSublayer(glint)
         }
 
-        for l in [layer!, body, shell, legs, eyeLeft, eyeRight, glintLeft, glintRight] {
+        for l in [layer!, body, shell, legs, cap, eyeLeft, eyeRight, glintLeft, glintRight] {
             l.contentsScale = scaleFactor
         }
 
@@ -151,6 +158,17 @@ final class PetView: NSView {
         return c
     }()
 
+    /// baseball cap: crown on top of the head + visor sticking out to the right
+    /// (negative rows extend above the TUI art's grid)
+    private static let capCells: [(Int, Int)] = {
+        var c: [(Int, Int)] = []
+        for x in 3...7 { c.append((x, -2)) }     // crown top
+        for x in 2...8 { c.append((x, -1)) }     // crown base
+        c.append((9, -1))                        // visor
+        c.append((10, -1))
+        return c
+    }()
+
     private static let legCellsA: [(Int, Int)] = [(1, 4), (3, 4), (7, 4), (9, 4),
                                                   (1, 5), (3, 5), (7, 5), (9, 5)]
     private static let legCellsB: [(Int, Int)] = [(2, 4), (4, 4), (6, 4), (8, 4),
@@ -172,13 +190,45 @@ final class PetView: NSView {
         return path
     }
 
+    // MARK: - Cap colors (stable per session name → memorable identity)
+
+    static let capPalette: [NSColor] = [
+        NSColor(srgbRed: 0.12, green: 0.23, blue: 0.54, alpha: 1),   // navy
+        NSColor(srgbRed: 0.05, green: 0.58, blue: 0.53, alpha: 1),   // teal
+        NSColor(srgbRed: 0.98, green: 0.80, blue: 0.08, alpha: 1),   // yellow
+        NSColor(srgbRed: 0.49, green: 0.23, blue: 0.93, alpha: 1),   // purple
+        NSColor(srgbRed: 0.09, green: 0.64, blue: 0.29, alpha: 1),   // green
+        NSColor(srgbRed: 0.93, green: 0.28, blue: 0.60, alpha: 1),   // pink
+        NSColor(srgbRed: 0.05, green: 0.65, blue: 0.91, alpha: 1),   // sky
+        NSColor(srgbRed: 0.86, green: 0.15, blue: 0.15, alpha: 1),   // red
+        NSColor(srgbRed: 0.96, green: 0.94, blue: 0.91, alpha: 1),   // cream
+        NSColor(srgbRed: 0.15, green: 0.15, blue: 0.14, alpha: 1),   // ink
+    ]
+
+    static func capIndex(for name: String) -> Int {
+        var hash: UInt64 = 5381
+        for b in name.utf8 { hash = hash &* 33 &+ UInt64(b) }
+        return Int(hash % UInt64(capPalette.count))
+    }
+
+    static func capColor(for name: String) -> NSColor {
+        capPalette[capIndex(for: name)]
+    }
+
+    func setCap(_ color: NSColor) {
+        cap.fillColor = color.cgColor
+    }
+
     // MARK: - Registry updates
 
     func update(info newInfo: SessionInfo) {
         let oldStatus = info.status
         let nameChanged = newInfo.name != info.name
         info = newInfo
-        if nameChanged { setName(newInfo.name) }
+        if nameChanged {
+            setName(newInfo.name)
+            cap.fillColor = Self.capColor(for: newInfo.name).cgColor
+        }
         if oldStatus == "busy" && newInfo.status == "idle" {
             hookWorkingUntil = 0
         }

@@ -63,14 +63,38 @@ final class PetManager {
 
     // MARK: - Registry sync
 
+    /// stable cap color per session name, with deterministic collision probing
+    /// so all live crabs wear distinct caps
+    private(set) var capColors: [String: NSColor] = [:]
+
+    private func assignCapColors(_ sessions: [SessionInfo]) {
+        var used = Set<Int>()
+        var colors: [String: NSColor] = [:]
+        for s in sessions.sorted(by: { $0.name < $1.name }) {
+            var idx = PetView.capIndex(for: s.name)
+            var probe = 0
+            while used.contains(idx) && probe < PetView.capPalette.count {
+                idx = (idx + 1) % PetView.capPalette.count
+                probe += 1
+            }
+            used.insert(idx)
+            colors[s.sessionId] = PetView.capPalette[idx]
+        }
+        capColors = colors
+    }
+
     func sync(_ sessions: [SessionInfo]) {
         lastSessions = sessions
+        assignCapColors(sessions)
         let ids = Set(sessions.map { $0.sessionId })
         for info in sessions {
             if let pet = pets[info.sessionId] {
                 pet.update(info: info)
             } else {
                 addPet(info)
+            }
+            if let color = capColors[info.sessionId] {
+                pets[info.sessionId]?.setCap(color)
             }
         }
         for (id, pet) in pets where !ids.contains(id) {

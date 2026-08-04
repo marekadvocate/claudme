@@ -29,13 +29,15 @@ final class StatusItemController: NSObject, NSMenuDelegate {
             menu.addItem(withTitle: "No Claude sessions", action: nil, keyEquivalent: "")
         }
         for s in sessions {
-            let glyph: String
-            switch s.status {
-            case "busy": glyph = "●"
-            case "idle": glyph = "○"
-            default: glyph = "◐"
-            }
-            menu.addItem(withTitle: "\(glyph) \(s.name) — \(s.status)", action: nil, keyEquivalent: "")
+            let item = NSMenuItem(title: "", action: nil, keyEquivalent: "")
+            // cap-colored dot = the same identity color the crab wears
+            let title = NSMutableAttributedString(string: "● ", attributes: [
+                .foregroundColor: manager.capColors[s.sessionId] ?? PetView.capColor(for: s.name),
+            ])
+            title.append(NSAttributedString(string: "\(s.name) — \(s.status)"))
+            item.attributedTitle = title
+            item.isEnabled = false
+            menu.addItem(item)
         }
 
         menu.addItem(.separator())
