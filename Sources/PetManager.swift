@@ -207,6 +207,12 @@ final class PetManager {
     // MARK: - Hook events
 
     func handle(_ event: HookEvent) {
+        // every hook event carries the session's effort level — keep the crab's wiredness fresh
+        if !event.sessionId.isEmpty,
+           let effortDict = event.payload["effort"] as? [String: Any],
+           let level = effortDict["level"] as? String {
+            pets[event.sessionId]?.setEffort(level)
+        }
         switch event.name {
         case "Stop":
             pets[event.sessionId]?.celebrate()

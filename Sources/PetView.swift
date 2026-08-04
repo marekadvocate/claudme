@@ -5,6 +5,40 @@ enum PetState: Equatable {
     case idle, working, waiting, sleeping, celebrating
 }
 
+/// which Claude model the session runs — read from the transcript tail
+enum ModelKind: String {
+    case fable, opus, sonnet, haiku, unknown
+
+    static func parse(_ s: String?) -> ModelKind {
+        guard let s = s?.lowercased(), !s.isEmpty else { return .unknown }
+        if s.contains("fable") { return .fable }
+        if s.contains("opus") { return .opus }
+        if s.contains("sonnet") { return .sonnet }
+        if s.contains("haiku") { return .haiku }
+        return .unknown
+    }
+
+    /// bigger model → bigger crab
+    var sizeFactor: CGFloat {
+        switch self {
+        case .fable: return 1.12
+        case .opus: return 1.07
+        case .haiku: return 0.85
+        default: return 1.0
+        }
+    }
+
+    /// bigger model → deeper terracotta
+    var bodyColor: NSColor {
+        switch self {
+        case .fable: return NSColor(srgbRed: 0.72, green: 0.33, blue: 0.20, alpha: 1)
+        case .opus: return NSColor(srgbRed: 0.79, green: 0.41, blue: 0.26, alpha: 1)
+        case .haiku: return NSColor(srgbRed: 0.93, green: 0.63, blue: 0.50, alpha: 1)
+        default: return PetView.claudeOrange
+        }
+    }
+}
+
 /// Perimeter ring the pets crawl on (overlay-local coordinates, y-up).
 struct RoamArea {
     var minX: CGFloat
@@ -77,6 +111,29 @@ final class PetView: NSView {
     private var lastPokeAt: CFTimeInterval = 0
     private static let mumbles = ["🦀", "hmm…", "☕", "šup šup", "42", "vibe"]
 
+    // model + effort ("how wired is this crab")
+    private var modelKind: ModelKind = .unknown
+    private var effortLevel: String?
+    private var steamLayer: CALayer?
+
+    /// 0 chill … 3 full tweak
+    private func wiredness() -> Int {
+        switch effortLevel {
+        case "max": return 3
+        case "xhigh": return 2
+        case "high": return 1
+        default: return 0
+        }
+    }
+
+    private var mumblePool: [String] {
+        switch wiredness() {
+        case 3: return ["🚀", "!!!", "brrr", "MAX"]
+        case 2: return ["🔥", "⚡️", "hmm!"]
+        default: return Self.mumbles
+        }
+    }
+
     // MARK: - Init
 
     init(info: SessionInfo, roamArea: RoamArea) {
@@ -85,6 +142,7 @@ final class PetView: NSView {
         self.roamArea = roamArea
         super.init(frame: NSRect(origin: .zero, size: Self.viewSize))
         wantsLayer = true
+        modelKind = ModelKind.parse(info.model)
 
         let scaleFactor = NSScreen.main?.backingScaleFactor ?? 2
 
@@ -147,7 +205,8 @@ final class PetView: NSView {
         namePill.layer!.cornerRadius = 6.5
         namePill.alphaValue = 0.8
         addSubview(namePill)
-        setName(info.name)
+        applyModelLook(animated: false)
+        refreshPill()
 
         bubble.setFrameOrigin(NSPoint(x: 45, y: 90))
         addSubview(bubble)
@@ -237,10 +296,17 @@ final class PetView: NSView {
     func update(info newInfo: SessionInfo) {
         let oldStatus = info.status
         let nameChanged = newInfo.name != info.name
+        let modelChanged = newInfo.model != info.model
         info = newInfo
         if nameChanged {
-            setName(newInfo.name)
             cap.fillColor = Self.capColor(for: newInfo.name).cgColor
+        }
+        if modelChanged {
+            modelKind = ModelKind.parse(newInfo.model)
+            applyModelLook(animated: true)
+        }
+        if nameChanged || modelChanged {
+            refreshPill()
         }
         if oldStatus == "busy" && newInfo.status == "idle" {
             hookWorkingUntil = 0
@@ -249,6 +315,91 @@ final class PetView: NSView {
             let mapped = mappedState()
             if mapped != state { applyState(mapped, animated: true) }
         }
+    }
+
+    /// hook events carry the session's effort level
+    func setEffort(_ level: String) {
+        let norm = level.lowercased()
+        guard norm != effortLevel else { return }
+        effortLevel = norm
+        refreshPill()
+        updateWired()
+    }
+
+    private func applyModelLook(animated: Bool) {
+        shell.fillColor = modelKind.bodyColor.cgColor
+        legs.fillColor = modelKind.bodyColor.cgColor
+        setBodyScale(Self.scale(for: state), animated: animated)
+    }
+
+    /// effort visuals: dilated eyes, vibration, steam from the head
+    private func updateWired() {
+        applyEyes()
+        let w = wiredness()
+        body.removeAnimation(forKey: "wiredJitter")
+        if w >= 2 && state != .sleeping {
+            let jitter = CAKeyframeAnimation(keyPath: "transform.translation.x")
+            let amp: CGFloat = w == 3 ? 1.6 : 0.7
+            jitter.values = [0, amp, -amp, amp * 0.6, -amp * 0.6, 0]
+            jitter.duration = w == 3 ? 0.11 : 0.24
+            jitter.repeatCount = .infinity
+            body.add(jitter, forKey: "wiredJitter")
+        }
+        updateSteam()
+    }
+
+    private func updateSteam() {
+        let active = state == .working && wiredness() >= 2
+        if active, steamLayer == nil {
+            let group = CALayer()
+            for (i, dx) in [CGFloat(31), CGFloat(47)].enumerated() {
+                let puff = CALayer()
+                puff.backgroundColor = NSColor(white: 0.92, alpha: 0.85).cgColor
+                puff.bounds = CGRect(x: 0, y: 0, width: 5, height: 5)
+                puff.cornerRadius = 2.5
+                puff.position = CGPoint(x: dx, y: 79)
+                puff.contentsScale = NSScreen.main?.backingScaleFactor ?? 2
+                group.addSublayer(puff)
+                let up = CABasicAnimation(keyPath: "transform.translation.y")
+                up.fromValue = 0
+                up.toValue = 14
+                up.duration = 1.0
+                up.repeatCount = .infinity
+                up.timeOffset = Double(i) * 0.5
+                puff.add(up, forKey: "up")
+                let fade = CABasicAnimation(keyPath: "opacity")
+                fade.fromValue = 0.9
+                fade.toValue = 0
+                fade.duration = 1.0
+                fade.repeatCount = .infinity
+                fade.timeOffset = Double(i) * 0.5
+                puff.add(fade, forKey: "fade")
+            }
+            body.addSublayer(group)
+            steamLayer = group
+        } else if !active, let s = steamLayer {
+            steamLayer = nil
+            s.removeFromSuperlayer()
+        }
+    }
+
+    /// eye look: closed when sleeping, dilated when wired
+    private func applyEyes() {
+        let closed = state == .sleeping
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        let t: CATransform3D
+        if closed {
+            t = CATransform3DMakeScale(1, 0.15, 1)
+        } else {
+            let wide: CGFloat = [1, 1, 1.18, 1.42][wiredness()]
+            t = CATransform3DMakeScale(wide, wide, 1)
+        }
+        eyeLeft.transform = t
+        eyeRight.transform = t
+        glintLeft.opacity = closed ? 0 : 1
+        glintRight.opacity = closed ? 0 : 1
+        CATransaction.commit()
     }
 
     private func mappedState() -> PetState {
@@ -307,16 +458,7 @@ final class PetView: NSView {
         let old = state
         state = new
         setBodyScale(Self.scale(for: new), animated: animated)
-
-        let closed = (new == .sleeping)
-        CATransaction.begin()
-        CATransaction.setDisableActions(!animated)
-        let eyeTransform = closed ? CATransform3DMakeScale(1, 0.15, 1) : CATransform3DIdentity
-        eyeLeft.transform = eyeTransform
-        eyeRight.transform = eyeTransform
-        glintLeft.opacity = closed ? 0 : 1
-        glintRight.opacity = closed ? 0 : 1
-        CATransaction.commit()
+        applyEyes()
 
         if (old == .waiting || old == .sleeping) && new != .waiting && new != .sleeping {
             bubble.hide()
@@ -335,6 +477,7 @@ final class PetView: NSView {
             break
         }
         nextDecisionAt = 0
+        updateWired()
     }
 
     // MARK: - Body transform (scale + edge rotation)
@@ -357,7 +500,7 @@ final class PetView: NSView {
 
     private func setBodyScale(_ s: CGFloat, animated: Bool) {
         let from = (body.presentation() ?? body).value(forKeyPath: "transform.scale.x")
-        currentScale = s
+        currentScale = s * modelKind.sizeFactor   // bigger model → bigger crab
         updateBodyTransform(animated: animated, keyPath: "transform.scale", from: from)
     }
 
@@ -426,7 +569,7 @@ final class PetView: NSView {
             }
             if state == .idle && now >= nextMumbleAt {
                 nextMumbleAt = now + Double.random(in: 180...480)
-                bubble.show(Self.mumbles.randomElement()!, for: 2.4)
+                bubble.show(mumblePool.randomElement()!, for: 2.4)
             }
         }
     }
@@ -600,9 +743,13 @@ final class PetView: NSView {
 
     private func squint(_ on: Bool) {
         guard state != .sleeping else { return }
-        let t = on ? CATransform3DMakeScale(1, 0.45, 1) : CATransform3DIdentity
-        eyeLeft.transform = t
-        eyeRight.transform = t
+        if on {
+            let t = CATransform3DMakeScale(1, 0.45, 1)
+            eyeLeft.transform = t
+            eyeRight.transform = t
+        } else {
+            applyEyes()
+        }
     }
 
     /// pixel beer mug: white foam, amber body, handle on the right
@@ -665,7 +812,8 @@ final class PetView: NSView {
             slideDir = Bool.random() ? 1 : -1
             slideRemaining = state == .working ? CGFloat.random(in: 260...700)
                                                : CGFloat.random(in: 80...260)
-            speed = state == .working ? CGFloat.random(in: 90...130) : CGFloat.random(in: 24...40)
+            let base = state == .working ? CGFloat.random(in: 90...130) : CGFloat.random(in: 24...40)
+            speed = base * (1 + CGFloat(wiredness()) * 0.22)   // wired crabs scuttle faster
         } else {
             nextDecisionAt = now + Double.random(in: 2...7)
         }
@@ -739,7 +887,9 @@ final class PetView: NSView {
 
     private func positionPill() {
         let w = namePill.frame.width
-        namePill.setFrameOrigin(NSPoint(x: pillCenterX - w / 2, y: 2))
+        var x = pillCenterX - w / 2
+        x = min(max(x, 0), bounds.width - w)
+        namePill.setFrameOrigin(NSPoint(x: x, y: 2))
     }
 
     /// bottom → right → top → left, wrapping
@@ -896,12 +1046,18 @@ final class PetView: NSView {
 
     // MARK: - Misc
 
-    private func setName(_ name: String) {
-        namePill.stringValue = name
+    /// pill: name · model · effort (effort only when it's worth bragging about)
+    private func refreshPill() {
+        var text = info.name
+        if modelKind != .unknown { text += " · \(modelKind.rawValue)" }
+        if let e = effortLevel, e == "xhigh" || e == "max" { text += " · \(e)" }
+        namePill.stringValue = text
         namePill.sizeToFit()
         let w = namePill.frame.width + 12
         let h = namePill.frame.height + 3
-        namePill.frame = NSRect(x: pillCenterX - w / 2, y: 2, width: w, height: h)
+        var x = pillCenterX - w / 2
+        x = min(max(x, 0), bounds.width - w)   // keep long pills inside the view
+        namePill.frame = NSRect(x: x, y: 2, width: w, height: h)
     }
 
     // MARK: - Click interaction: jump to the session's terminal
