@@ -5,7 +5,7 @@ enum PetState: Equatable {
     case idle, working, waiting, sleeping, celebrating
 }
 
-/// Full-screen roaming area (overlay-local coordinates, y-up).
+/// Perimeter ring the pets crawl on (overlay-local coordinates, y-up).
 struct RoamArea {
     var minX: CGFloat
     var maxX: CGFloat
@@ -13,11 +13,18 @@ struct RoamArea {
     var maxY: CGFloat
 }
 
+/// Pixel-art Clawd — geometry extracted from Claude Code's own TUI welcome art:
+///  █████████
+/// ██▄█████▄██
+/// █ █   █ █
 final class PetView: NSView {
-    // Claude brand "Crail"
     static let claudeOrange = NSColor(srgbRed: 217/255, green: 119/255, blue: 87/255, alpha: 1)
-    static let inkColor = NSColor(srgbRed: 38/255, green: 38/255, blue: 36/255, alpha: 1)
+    static let inkColor = NSColor(srgbRed: 30/255, green: 30/255, blue: 28/255, alpha: 1)
     static let viewSize = NSSize(width: 150, height: 170)
+
+    // pixel grid: 11 × 6, pixel size 7 → content 77 × 42 centered in an 80×80 body box
+    static let px: CGFloat = 7
+    static let gridW = 11, gridH = 6
 
     let sessionId: String
     private(set) var info: SessionInfo
@@ -28,20 +35,26 @@ final class PetView: NSView {
     private var celebrateUntil: CFTimeInterval = 0
     private var hookWorkingUntil: CFTimeInterval = 0
 
-    // layers — body floats; burst spins behind an upright face
+    // layers — body container rotates to the edge it crawls on; pill/bubble stay upright
     private let body = CALayer()
-    private let burst = CAShapeLayer()
-    private let centerDisc = CAShapeLayer()
+    private let shell = CAShapeLayer()      // Clawd's body pixels
+    private let legs = CAShapeLayer()       // two-frame scuttle
     private let eyeLeft = CALayer()
     private let eyeRight = CALayer()
     private let glintLeft = CALayer()
     private let glintRight = CALayer()
-    private let mouth = CAShapeLayer()
     private let namePill = NSTextField(labelWithString: "")
     private let bubble = BubbleView()
 
-    // behavior — pets live on the screen perimeter and slide along it
-    private var perimT: CGFloat = -1        // position along the edge ring
+    private static let legsFrameA = pixelPath(cells: legCellsA)
+    private static let legsFrameB = pixelPath(cells: legCellsB)
+    private var legPhase = 0
+    private var currentAngle: CGFloat = 0
+    private var currentScale: CGFloat = 1
+    private var currentSegment = -1
+
+    // behavior — crawl along the screen edge ring
+    private var perimT: CGFloat = -1
     private var slideDir: CGFloat = 1
     private var slideRemaining: CGFloat = 0
     private var speed: CGFloat = 40
@@ -61,7 +74,6 @@ final class PetView: NSView {
 
         let scaleFactor = NSScreen.main?.backingScaleFactor ?? 2
 
-        // floating body with a soft drop shadow (they fly — no ground shadow)
         body.bounds = CGRect(x: 0, y: 0, width: 80, height: 80)
         body.position = CGPoint(x: 75, y: 60)
         body.shadowColor = NSColor.black.cgColor
@@ -70,64 +82,43 @@ final class PetView: NSView {
         body.shadowOffset = CGSize(width: 0, height: -2)
         layer!.addSublayer(body)
 
-        // the spark — 12 chisel-tipped wedge rays, filled (matches the real mark)
-        burst.frame = body.bounds
-        burst.path = Self.sparkPath(radius: 30, center: CGPoint(x: 40, y: 40))
-        burst.fillColor = Self.claudeOrange.cgColor
-        burst.strokeColor = Self.claudeOrange.cgColor   // same-color round-join stroke softens the corners
-        burst.lineWidth = 3.2
-        burst.lineJoin = .round
-        burst.lineCap = .round
-        body.addSublayer(burst)
+        shell.frame = body.bounds
+        shell.path = Self.pixelPath(cells: Self.shellCells)
+        shell.fillColor = Self.claudeOrange.cgColor
+        body.addSublayer(shell)
 
-        // solid center so the face has a home
-        let discPath = CGMutablePath()
-        discPath.addEllipse(in: CGRect(x: 40 - 13.5, y: 40 - 13.5, width: 27, height: 27))
-        centerDisc.frame = body.bounds
-        centerDisc.path = discPath
-        centerDisc.fillColor = Self.claudeOrange.cgColor
-        body.addSublayer(centerDisc)
+        legs.frame = body.bounds
+        legs.path = Self.legsFrameA
+        legs.fillColor = Self.claudeOrange.cgColor
+        body.addSublayer(legs)
 
-        // face (upright — only the burst spins)
-        for (eye, glint, dx) in [(eyeLeft, glintLeft, CGFloat(-6.4)), (eyeRight, glintRight, CGFloat(6.4))] {
+        // eyes = the two ▄ cells of the TUI art (grid row 3, cols 2 & 8)
+        for (eye, glint, col) in [(eyeLeft, glintLeft, 2), (eyeRight, glintRight, 8)] {
+            let r = Self.cellRect(col: col, row: 3)
             eye.backgroundColor = Self.inkColor.cgColor
-            eye.bounds = CGRect(x: 0, y: 0, width: 5.6, height: 10)
-            eye.cornerRadius = 2.8
-            eye.position = CGPoint(x: 40 + dx, y: 43)
+            eye.bounds = CGRect(x: 0, y: 0, width: Self.px, height: Self.px)
+            eye.position = CGPoint(x: r.midX, y: r.midY)
             body.addSublayer(eye)
             glint.backgroundColor = NSColor(white: 1, alpha: 0.9).cgColor
-            glint.bounds = CGRect(x: 0, y: 0, width: 2, height: 2)
-            glint.cornerRadius = 1
-            glint.position = CGPoint(x: 40 + dx + 1.4, y: 45.6)
+            glint.bounds = CGRect(x: 0, y: 0, width: 2.2, height: 2.2)
+            glint.position = CGPoint(x: r.midX + 1.8, y: r.midY + 1.8)
             body.addSublayer(glint)
         }
 
-        let mouthPath = CGMutablePath()
-        mouthPath.addArc(center: CGPoint(x: 40, y: 36.5), radius: 4.6,
-                         startAngle: 205 * .pi / 180, endAngle: 335 * .pi / 180, clockwise: false)
-        mouth.path = mouthPath
-        mouth.strokeColor = Self.inkColor.cgColor
-        mouth.fillColor = nil
-        mouth.lineWidth = 1.7
-        mouth.lineCap = .round
-        body.addSublayer(mouth)
-
-        // crisp on retina
-        for l in [layer!, body, burst, centerDisc, eyeLeft, eyeRight, glintLeft, glintRight, mouth] {
+        for l in [layer!, body, shell, legs, eyeLeft, eyeRight, glintLeft, glintRight] {
             l.contentsScale = scaleFactor
         }
 
-        // permanent gentle hover
-        let hover = CABasicAnimation(keyPath: "transform.translation.y")
-        hover.fromValue = -2.5
-        hover.toValue = 2.5
-        hover.duration = 2.2
-        hover.autoreverses = true
-        hover.repeatCount = .infinity
-        hover.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-        body.add(hover, forKey: "hover")
+        // gentle breathing
+        let breathe = CABasicAnimation(keyPath: "transform.scale")
+        breathe.fromValue = 1.0
+        breathe.toValue = 1.025
+        breathe.duration = 1.8
+        breathe.autoreverses = true
+        breathe.repeatCount = .infinity
+        breathe.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+        shell.add(breathe, forKey: "breathe")
 
-        // name pill
         namePill.font = .systemFont(ofSize: 9, weight: .semibold)
         namePill.textColor = NSColor(white: 1, alpha: 0.92)
         namePill.alignment = .center
@@ -138,8 +129,7 @@ final class PetView: NSView {
         addSubview(namePill)
         setName(info.name)
 
-        // speech bubble
-        bubble.setFrameOrigin(NSPoint(x: 45, y: 122))
+        bubble.setFrameOrigin(NSPoint(x: 45, y: 90))
         addSubview(bubble)
 
         placeOnPerimeter()
@@ -150,35 +140,34 @@ final class PetView: NSView {
 
     required init?(coder: NSCoder) { fatalError("not used") }
 
-    // MARK: - The spark path (replicated from the real mark: thin wedges,
-    // slightly flared outward, chisel-cut tips, irregular lengths/angles)
+    // MARK: - Clawd pixel geometry (grid: x = col from left, y = row from TOP)
 
-    private static func sparkPath(radius r: CGFloat, center c: CGPoint) -> CGPath {
+    private static let shellCells: [(Int, Int)] = {
+        var c: [(Int, Int)] = []
+        for x in 1...9 { c.append((x, 0)) }                 //  █████████
+        for x in 1...9 { c.append((x, 1)) }                 //  (top row is 1 char = 2 px tall)
+        for x in 0...10 { c.append((x, 2)) }                // ███████████
+        for x in 0...10 where x != 2 && x != 8 { c.append((x, 3)) }  // ██▄█████▄██ (eyes cut out)
+        return c
+    }()
+
+    private static let legCellsA: [(Int, Int)] = [(1, 4), (3, 4), (7, 4), (9, 4),
+                                                  (1, 5), (3, 5), (7, 5), (9, 5)]
+    private static let legCellsB: [(Int, Int)] = [(2, 4), (4, 4), (6, 4), (8, 4),
+                                                  (2, 5), (4, 5), (6, 5), (8, 5)]
+
+    private static func cellRect(col: Int, row: Int) -> CGRect {
+        let originX = (80 - CGFloat(gridW) * px) / 2
+        let topY = 80 - (80 - CGFloat(gridH) * px) / 2
+        return CGRect(x: originX + CGFloat(col) * px,
+                      y: topY - CGFloat(row + 1) * px,
+                      width: px, height: px)
+    }
+
+    private static func pixelPath(cells: [(Int, Int)]) -> CGPath {
         let path = CGMutablePath()
-        let lengths: [CGFloat] = [1.00, 0.74, 0.96, 0.66, 1.00, 0.72, 0.94, 0.68, 0.98, 0.75, 0.90, 0.70]
-        let jitterDeg: [CGFloat] = [0, 4, -3, 5, -2, 3, -5, 2, -4, 1, 3, -2]
-        let tipSkew: [CGFloat] = [0.06, 0.10, 0.04, 0.08, 0.05, 0.09, 0.03, 0.07, 0.06, 0.10, 0.04, 0.08]
-        let rays = lengths.count
-        let r0 = r * 0.12          // inner start
-        let w0 = r * 0.07          // half-width at center
-        let w1 = r * 0.105         // half-width at tip (slight flare)
-
-        for i in 0..<rays {
-            let a = (CGFloat(i) / CGFloat(rays)) * 2 * .pi + jitterDeg[i] * .pi / 180 + .pi / 2
-            let dir = CGPoint(x: cos(a), y: sin(a))
-            let perp = CGPoint(x: -sin(a), y: cos(a))
-            let len = r * lengths[i]
-            let lenShort = len * (1 - tipSkew[i])   // chisel cut
-
-            func pt(_ d: CGFloat, _ w: CGFloat) -> CGPoint {
-                CGPoint(x: c.x + dir.x * d + perp.x * w,
-                        y: c.y + dir.y * d + perp.y * w)
-            }
-            path.move(to: pt(r0, w0))
-            path.addLine(to: pt(len, w1))
-            path.addLine(to: pt(lenShort, -w1))
-            path.addLine(to: pt(r0, -w0))
-            path.closeSubpath()
+        for (col, row) in cells {
+            path.addRect(cellRect(col: col, row: row))
         }
         return path
     }
@@ -251,22 +240,6 @@ final class PetView: NSView {
         }
     }
 
-    /// burst rotation: spin speed = activity (like the Claude Code spinner)
-    private func setSpin(duration: CFTimeInterval?) {
-        let current = (burst.presentation() ?? burst).value(forKeyPath: "transform.rotation.z") as? CGFloat ?? 0
-        burst.removeAnimation(forKey: "spin")
-        CATransaction.begin()
-        CATransaction.setDisableActions(true)
-        burst.setValue(current, forKeyPath: "transform.rotation.z")
-        CATransaction.commit()
-        guard let duration else { return }
-        let spin = CABasicAnimation(keyPath: "transform.rotation.z")
-        spin.byValue = 2 * CGFloat.pi
-        spin.duration = duration
-        spin.repeatCount = .infinity
-        burst.add(spin, forKey: "spin")
-    }
-
     private func applyState(_ new: PetState, animated: Bool) {
         let old = state
         state = new
@@ -275,19 +248,12 @@ final class PetView: NSView {
         let closed = (new == .sleeping)
         CATransaction.begin()
         CATransaction.setDisableActions(!animated)
-        let eyeTransform = closed ? CATransform3DMakeScale(1, 0.12, 1) : CATransform3DIdentity
+        let eyeTransform = closed ? CATransform3DMakeScale(1, 0.15, 1) : CATransform3DIdentity
         eyeLeft.transform = eyeTransform
         eyeRight.transform = eyeTransform
         glintLeft.opacity = closed ? 0 : 1
         glintRight.opacity = closed ? 0 : 1
         CATransaction.commit()
-
-        switch new {
-        case .idle: setSpin(duration: 16)
-        case .working: setSpin(duration: 2.0)
-        case .celebrating: setSpin(duration: 0.8)
-        case .waiting, .sleeping: setSpin(duration: nil)
-        }
 
         if (old == .waiting || old == .sleeping) && new != .waiting && new != .sleeping {
             bubble.hide()
@@ -298,7 +264,7 @@ final class PetView: NSView {
             bubble.show("!", for: nil)
             nextHopAt = CACurrentMediaTime() + 0.4
         case .sleeping:
-            slideRemaining = 0      // tick slides us down to the bottom edge
+            slideRemaining = 0      // tick crawls us down to the bottom edge
             bubble.show("z Z", for: nil)
         case .working:
             nextChatterAt = CACurrentMediaTime() + Double.random(in: 8...20)
@@ -308,20 +274,34 @@ final class PetView: NSView {
         nextDecisionAt = 0
     }
 
-    private func setBodyScale(_ s: CGFloat, animated: Bool) {
+    // MARK: - Body transform (scale + edge rotation)
+
+    private func updateBodyTransform(animated: Bool, keyPath: String, from: Any?) {
+        let t = CATransform3DRotate(CATransform3DMakeScale(currentScale, currentScale, 1),
+                                    currentAngle, 0, 0, 1)
         if animated {
-            let spring = CASpringAnimation(keyPath: "transform.scale")
-            spring.fromValue = (body.presentation() ?? body).value(forKeyPath: "transform.scale.x")
-            spring.toValue = s
-            spring.damping = 11
-            spring.initialVelocity = 4
-            spring.duration = spring.settlingDuration
-            body.add(spring, forKey: "stateScale")
+            let anim = CASpringAnimation(keyPath: keyPath)
+            anim.fromValue = from
+            anim.damping = 12
+            anim.duration = anim.settlingDuration
+            body.add(anim, forKey: keyPath)
         }
         CATransaction.begin()
         CATransaction.setDisableActions(true)
-        body.transform = CATransform3DMakeScale(s, s, 1)
+        body.transform = t
         CATransaction.commit()
+    }
+
+    private func setBodyScale(_ s: CGFloat, animated: Bool) {
+        let from = (body.presentation() ?? body).value(forKeyPath: "transform.scale.x")
+        currentScale = s
+        updateBodyTransform(animated: animated, keyPath: "transform.scale", from: from)
+    }
+
+    private func setBodyAngle(_ a: CGFloat, animated: Bool) {
+        let from = (body.presentation() ?? body).value(forKeyPath: "transform.rotation.z")
+        currentAngle = a
+        updateBodyTransform(animated: animated, keyPath: "transform.rotation.z", from: from)
     }
 
     private func spawnPop() {
@@ -352,11 +332,13 @@ final class PetView: NSView {
                 smallHop()
             }
         case .sleeping:
-            slideTowardBottom()
+            crawlTowardBottom()
         case .idle, .working:
             if slideRemaining > 0 {
-                slide(by: speed / 30)
+                crawl(by: speed / 30)
                 if slideRemaining <= 0 {
+                    legPhase = 0
+                    legs.path = Self.legsFrameA
                     nextDecisionAt = now + (state == .working ? Double.random(in: 0.3...1.2)
                                                               : Double.random(in: 2...7))
                 }
@@ -370,7 +352,6 @@ final class PetView: NSView {
         }
     }
 
-    /// choose a slide along the perimeter — pets live on the screen edge
     private func decide(now: CFTimeInterval) {
         let shouldMove = state == .working ? true : Double.random(in: 0...1) < 0.55
         if shouldMove {
@@ -383,20 +364,24 @@ final class PetView: NSView {
         }
     }
 
-    private func slide(by distance: CGFloat) {
+    private func crawl(by distance: CGFloat) {
         perimT = Self.wrap(perimT + slideDir * distance, length: perimeterLength)
         slideRemaining -= distance
         applyPerimeterPosition()
+        // scuttle: legs alternate every ~7 px of travelled distance
+        let phase = Int(perimT / 7) & 1
+        if phase != legPhase {
+            legPhase = phase
+            legs.path = phase == 0 ? Self.legsFrameA : Self.legsFrameB
+        }
     }
 
-    /// sleeping pets settle on the bottom edge
-    private func slideTowardBottom() {
+    /// sleeping pets crawl the shortest way around the ring down to the bottom edge
+    private func crawlTowardBottom() {
         let delta = Self.shortestDelta(from: perimT, to: nearestBottomT, length: perimeterLength)
         guard abs(delta) > 3 else { return }   // resting
         slideDir = delta > 0 ? 1 : -1
-        slideRemaining = 0
-        perimT = Self.wrap(perimT + slideDir * min(70.0 / 30.0, abs(delta)), length: perimeterLength)
-        applyPerimeterPosition()
+        crawl(by: min(70.0 / 30.0, abs(delta)))
     }
 
     // MARK: - Perimeter geometry
@@ -419,24 +404,48 @@ final class PetView: NSView {
     }
 
     private func applyPerimeterPosition() {
-        let p = Self.position(for: perimT, in: roamArea)
+        let (p, seg) = Self.positionAndSegment(for: perimT, in: roamArea)
         if abs(p.x - frame.origin.x) > 0.4 || abs(p.y - frame.origin.y) > 0.4 {
             setFrameOrigin(p)
         }
+        if seg != currentSegment {
+            let firstTime = currentSegment < 0
+            currentSegment = seg
+            // legs point at the edge: bottom 0°, right -90°, top 180°, left +90°
+            let angles: [CGFloat] = [0, -.pi / 2, .pi, .pi / 2]
+            setBodyAngle(angles[seg], animated: !firstTime)
+            // bubble goes below the pet when crawling on the ceiling
+            bubble.setFrameOrigin(NSPoint(x: bubble.frame.origin.x, y: seg == 2 ? 22 : 90))
+            positionPill()
+        }
+    }
+
+    /// keep the name pill on-screen: shift it inward on the side edges
+    private var pillCenterX: CGFloat {
+        switch currentSegment {
+        case 1: return 42    // right wall → pill toward screen center
+        case 3: return 108   // left wall
+        default: return 75
+        }
+    }
+
+    private func positionPill() {
+        let w = namePill.frame.width
+        namePill.setFrameOrigin(NSPoint(x: pillCenterX - w / 2, y: 2))
     }
 
     /// bottom → right → top → left, wrapping
-    private static func position(for t: CGFloat, in area: RoamArea) -> NSPoint {
+    private static func positionAndSegment(for t: CGFloat, in area: RoamArea) -> (NSPoint, Int) {
         let w = max(1, area.maxX - area.minX)
         let h = max(1, area.maxY - area.minY)
         var v = wrap(t, length: 2 * (w + h))
-        if v < w { return NSPoint(x: area.minX + v, y: area.minY) }
+        if v < w { return (NSPoint(x: area.minX + v, y: area.minY), 0) }
         v -= w
-        if v < h { return NSPoint(x: area.maxX, y: area.minY + v) }
+        if v < h { return (NSPoint(x: area.maxX, y: area.minY + v), 1) }
         v -= h
-        if v < w { return NSPoint(x: area.maxX - v, y: area.maxY) }
+        if v < w { return (NSPoint(x: area.maxX - v, y: area.maxY), 2) }
         v -= w
-        return NSPoint(x: area.minX, y: area.maxY - v)
+        return (NSPoint(x: area.minX, y: area.maxY - v), 3)
     }
 
     private static func wrap(_ t: CGFloat, length: CGFloat) -> CGFloat {
@@ -479,7 +488,7 @@ final class PetView: NSView {
         for eye in [eyeLeft, eyeRight] {
             let blink = CABasicAnimation(keyPath: "transform.scale.y")
             blink.fromValue = 1
-            blink.toValue = 0.12
+            blink.toValue = 0.15
             blink.duration = 0.07
             blink.autoreverses = true
             eye.add(blink, forKey: "blink")
@@ -493,7 +502,7 @@ final class PetView: NSView {
         namePill.sizeToFit()
         let w = namePill.frame.width + 12
         let h = namePill.frame.height + 3
-        namePill.frame = NSRect(x: (bounds.width - w) / 2, y: 2, width: w, height: h)
+        namePill.frame = NSRect(x: pillCenterX - w / 2, y: 2, width: w, height: h)
     }
 
     func cleanup() {

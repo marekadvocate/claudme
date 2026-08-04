@@ -48,12 +48,13 @@ final class PetManager {
         guard let screen = NSScreen.main ?? NSScreen.screens.first else { return }
         overlayWindow.setFrame(screen.frame, display: true)
         let visible = screen.visibleFrame
-        // perimeter ring the pets live on — body centers hug the visible-frame edges
+        // perimeter ring the pets crawl on — legs touch the visible-frame edges
+        // (offsets derived from body center at (75,60), content half-extent ~21 px)
         roamArea = RoamArea(
-            minX: visible.minX - screen.frame.minX - 30,
-            maxX: visible.maxX - screen.frame.minX - PetView.viewSize.width + 30,
-            minY: max(-6, visible.minY - screen.frame.minY - 6),
-            maxY: visible.maxY - screen.frame.minY - PetView.viewSize.height - 40
+            minX: visible.minX - screen.frame.minX - 52,
+            maxX: visible.maxX - screen.frame.minX - 98,
+            minY: visible.minY - screen.frame.minY - 37,
+            maxY: visible.maxY - screen.frame.minY - 83
         )
         for pet in pets.values {
             pet.roamArea = roamArea   // pets re-derive their edge position next tick

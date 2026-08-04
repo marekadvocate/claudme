@@ -30,13 +30,14 @@ is the delivery vehicle.
 - One borderless transparent **overlay window** covering the main screen,
   `ignoresMouseEvents = true` (fully click-through — sidesteps the macOS 26 transparent-window
   hit-testing bug), `.floating` level, joins all Spaces + fullscreen.
-- Each pet = a layer-backed `NSView` inside the overlay. Body is a code-drawn spark
-  replicated from the real mark's geometry (12 chisel-tipped wedge rays, irregular lengths)
-  with an upright face on a solid center disc; no image assets. The ray layer spins —
-  spin speed = activity, like the Claude Code TUI spinner.
-- Movement = full-screen 360° roaming: random waypoints anywhere in `visibleFrame`,
-  30 fps frame-origin steps with ease-out arrival; hover/blink = repeating Core Animation;
-  confetti = `CAEmitterLayer`. Sleeping pets drift to the bottom edge first.
+- Each pet = a layer-backed `NSView` inside the overlay. Body is pixel-art **Clawd** —
+  the crab mascot, geometry extracted from Claude Code's own TUI welcome art
+  (` █████████ / ██▄█████▄██ / █ █   █ █ `) as an 11×6 square-pixel grid; no image assets.
+- Movement = crawling along the screen-edge ring (bottom → right → top → left): the body
+  rotates so the legs always point at the edge (sideways on walls, upside down on the
+  ceiling), and a two-frame leg scuttle is keyed to distance travelled. Sleeping pets
+  crawl the shortest way around the ring to rest on the bottom edge.
+  Confetti = `CAEmitterLayer`; blink/breathe = repeating Core Animation.
 - Name pill under each pet = session `name` from the registry.
 
 ## State mapping (hybrid: small when idle, big on events)
