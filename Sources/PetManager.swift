@@ -48,17 +48,15 @@ final class PetManager {
         guard let screen = NSScreen.main ?? NSScreen.screens.first else { return }
         overlayWindow.setFrame(screen.frame, display: true)
         let visible = screen.visibleFrame
+        // perimeter ring the pets live on — body centers hug the visible-frame edges
         roamArea = RoamArea(
-            minX: visible.minX - screen.frame.minX + 10,
-            maxX: visible.maxX - screen.frame.minX - PetView.viewSize.width - 10,
-            minY: max(0, visible.minY - screen.frame.minY + 2),
-            maxY: visible.maxY - screen.frame.minY - PetView.viewSize.height - 6
+            minX: visible.minX - screen.frame.minX - 30,
+            maxX: visible.maxX - screen.frame.minX - PetView.viewSize.width + 30,
+            minY: max(-6, visible.minY - screen.frame.minY - 6),
+            maxY: visible.maxY - screen.frame.minY - PetView.viewSize.height - 40
         )
         for pet in pets.values {
-            pet.roamArea = roamArea
-            let x = min(max(pet.frame.origin.x, roamArea.minX), roamArea.maxX)
-            let y = min(max(pet.frame.origin.y, roamArea.minY), roamArea.maxY)
-            pet.setFrameOrigin(NSPoint(x: x, y: y))
+            pet.roamArea = roamArea   // pets re-derive their edge position next tick
         }
     }
 
@@ -82,11 +80,8 @@ final class PetManager {
     }
 
     private func addPet(_ info: SessionInfo) {
-        let pet = PetView(info: info, roamArea: roamArea)
+        let pet = PetView(info: info, roamArea: roamArea)   // places itself on the perimeter
         pet.onConfetti = { [weak self] p in self?.confetti(over: p) }
-        let x = CGFloat.random(in: roamArea.minX...max(roamArea.minX + 1, roamArea.maxX))
-        let y = CGFloat.random(in: roamArea.minY...max(roamArea.minY + 1, roamArea.maxY))
-        pet.setFrameOrigin(NSPoint(x: x, y: y))
         contentView.addSubview(pet)
         pets[info.sessionId] = pet
     }

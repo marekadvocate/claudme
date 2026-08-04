@@ -40,9 +40,10 @@ final class PetView: NSView {
     private let namePill = NSTextField(labelWithString: "")
     private let bubble = BubbleView()
 
-    // behavior
-    private var moving = false
-    private var target = CGPoint.zero
+    // behavior — pets live on the screen perimeter and slide along it
+    private var perimT: CGFloat = -1        // position along the edge ring
+    private var slideDir: CGFloat = 1
+    private var slideRemaining: CGFloat = 0
     private var speed: CGFloat = 40
     private var nextDecisionAt: CFTimeInterval = 0
     private var nextHopAt: CFTimeInterval = 0
@@ -73,7 +74,10 @@ final class PetView: NSView {
         burst.frame = body.bounds
         burst.path = Self.sparkPath(radius: 30, center: CGPoint(x: 40, y: 40))
         burst.fillColor = Self.claudeOrange.cgColor
-        burst.strokeColor = nil
+        burst.strokeColor = Self.claudeOrange.cgColor   // same-color round-join stroke softens the corners
+        burst.lineWidth = 3.2
+        burst.lineJoin = .round
+        burst.lineCap = .round
         body.addSublayer(burst)
 
         // solid center so the face has a home
@@ -138,6 +142,7 @@ final class PetView: NSView {
         bubble.setFrameOrigin(NSPoint(x: 45, y: 122))
         addSubview(bubble)
 
+        placeOnPerimeter()
         startBlinking()
         applyState(mappedState(), animated: false)
         spawnPop()
@@ -289,15 +294,12 @@ final class PetView: NSView {
         }
         switch new {
         case .waiting:
-            moving = false
+            slideRemaining = 0
             bubble.show("!", for: nil)
             nextHopAt = CACurrentMediaTime() + 0.4
         case .sleeping:
+            slideRemaining = 0      // tick slides us down to the bottom edge
             bubble.show("z Z", for: nil)
-            // drift down and rest at the bottom
-            target = CGPoint(x: min(max(frame.origin.x, roamArea.minX), roamArea.maxX), y: roamArea.minY)
-            speed = 30
-            moving = true
         case .working:
             nextChatterAt = CACurrentMediaTime() + Double.random(in: 8...20)
         default:
@@ -335,24 +337,29 @@ final class PetView: NSView {
     // MARK: - Behavior tick (30 fps)
 
     func tick(now: CFTimeInterval) {
+        if perimT < 0 { placeOnPerimeter() }
+
         if state == .celebrating && now > celebrateUntil {
             applyState(mappedState(), animated: true)
         }
 
         switch state {
         case .celebrating:
-            moving = false
+            break
         case .waiting:
-            moving = false
             if now >= nextHopAt {
                 nextHopAt = now + Double.random(in: 2.2...3.4)
                 smallHop()
             }
         case .sleeping:
-            if moving { step(now: now) }   // finish descending, then rest
+            slideTowardBottom()
         case .idle, .working:
-            if moving {
-                step(now: now)
+            if slideRemaining > 0 {
+                slide(by: speed / 30)
+                if slideRemaining <= 0 {
+                    nextDecisionAt = now + (state == .working ? Double.random(in: 0.3...1.2)
+                                                              : Double.random(in: 2...7))
+                }
             } else if now >= nextDecisionAt {
                 decide(now: now)
             }
@@ -363,40 +370,86 @@ final class PetView: NSView {
         }
     }
 
-    /// pick a random destination anywhere on screen — full 360° roaming
+    /// choose a slide along the perimeter — pets live on the screen edge
     private func decide(now: CFTimeInterval) {
-        guard roamArea.maxX - roamArea.minX > 40, roamArea.maxY - roamArea.minY > 40 else {
-            nextDecisionAt = now + 2
-            return
-        }
         let shouldMove = state == .working ? true : Double.random(in: 0...1) < 0.55
         if shouldMove {
-            target = CGPoint(x: CGFloat.random(in: roamArea.minX...roamArea.maxX),
-                             y: CGFloat.random(in: roamArea.minY...roamArea.maxY))
+            slideDir = Bool.random() ? 1 : -1
+            slideRemaining = state == .working ? CGFloat.random(in: 260...700)
+                                               : CGFloat.random(in: 80...260)
             speed = state == .working ? CGFloat.random(in: 90...130) : CGFloat.random(in: 24...40)
-            moving = true
         } else {
             nextDecisionAt = now + Double.random(in: 2...7)
         }
     }
 
-    private func step(now: CFTimeInterval) {
-        let dt: CGFloat = 1.0 / 30.0
-        let dx = target.x - frame.origin.x
-        let dy = target.y - frame.origin.y
-        let dist = sqrt(dx * dx + dy * dy)
-        if dist < 4 {
-            setFrameOrigin(NSPoint(x: target.x, y: target.y))
-            moving = false
-            nextDecisionAt = now + (state == .working ? Double.random(in: 0.3...1.2)
-                                                      : Double.random(in: 2...7))
-            return
+    private func slide(by distance: CGFloat) {
+        perimT = Self.wrap(perimT + slideDir * distance, length: perimeterLength)
+        slideRemaining -= distance
+        applyPerimeterPosition()
+    }
+
+    /// sleeping pets settle on the bottom edge
+    private func slideTowardBottom() {
+        let delta = Self.shortestDelta(from: perimT, to: nearestBottomT, length: perimeterLength)
+        guard abs(delta) > 3 else { return }   // resting
+        slideDir = delta > 0 ? 1 : -1
+        slideRemaining = 0
+        perimT = Self.wrap(perimT + slideDir * min(70.0 / 30.0, abs(delta)), length: perimeterLength)
+        applyPerimeterPosition()
+    }
+
+    // MARK: - Perimeter geometry
+
+    private var perimeterLength: CGFloat {
+        let w = max(1, roamArea.maxX - roamArea.minX)
+        let h = max(1, roamArea.maxY - roamArea.minY)
+        return 2 * (w + h)
+    }
+
+    private var nearestBottomT: CGFloat {
+        let w = max(1, roamArea.maxX - roamArea.minX)
+        return min(max(frame.origin.x - roamArea.minX, 0), w)
+    }
+
+    private func placeOnPerimeter() {
+        guard roamArea.maxX > roamArea.minX, roamArea.maxY > roamArea.minY else { return }
+        perimT = CGFloat.random(in: 0..<perimeterLength)
+        applyPerimeterPosition()
+    }
+
+    private func applyPerimeterPosition() {
+        let p = Self.position(for: perimT, in: roamArea)
+        if abs(p.x - frame.origin.x) > 0.4 || abs(p.y - frame.origin.y) > 0.4 {
+            setFrameOrigin(p)
         }
-        // ease in/out: slow down on approach
-        let effective = min(speed, dist * 2.6 + 8)
-        let stepLen = effective * dt
-        setFrameOrigin(NSPoint(x: frame.origin.x + dx / dist * stepLen,
-                               y: frame.origin.y + dy / dist * stepLen))
+    }
+
+    /// bottom → right → top → left, wrapping
+    private static func position(for t: CGFloat, in area: RoamArea) -> NSPoint {
+        let w = max(1, area.maxX - area.minX)
+        let h = max(1, area.maxY - area.minY)
+        var v = wrap(t, length: 2 * (w + h))
+        if v < w { return NSPoint(x: area.minX + v, y: area.minY) }
+        v -= w
+        if v < h { return NSPoint(x: area.maxX, y: area.minY + v) }
+        v -= h
+        if v < w { return NSPoint(x: area.maxX - v, y: area.maxY) }
+        v -= w
+        return NSPoint(x: area.minX, y: area.maxY - v)
+    }
+
+    private static func wrap(_ t: CGFloat, length: CGFloat) -> CGFloat {
+        guard length > 0 else { return 0 }
+        var v = t.truncatingRemainder(dividingBy: length)
+        if v < 0 { v += length }
+        return v
+    }
+
+    private static func shortestDelta(from: CGFloat, to: CGFloat, length: CGFloat) -> CGFloat {
+        var d = wrap(to - from, length: length)
+        if d > length / 2 { d -= length }
+        return d
     }
 
     private func smallHop() {
