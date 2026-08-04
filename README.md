@@ -1,8 +1,9 @@
-# ClaudePet
+# ClaudePet (tamagotchi)
 
-One desktop pet per running Claude Code session. They walk along the bottom of your screen,
-pace while Claude works, hop and show "!" when a session needs you, and throw confetti
-when a session finishes a turn.
+One desktop pet per running Claude Code session. Little Claude sparks float and roam your
+whole screen — the spark spins faster while Claude works (like the TUI spinner), they hop
+and show "!" when a session needs you, throw confetti when a turn finishes, and drift down
+to sleep at the bottom when idle for long.
 
 Native Swift/AppKit. No Electron. No macOS permissions needed. Fully click-through —
 pets never steal your clicks.

@@ -6,7 +6,7 @@ final class PetManager {
     private var contentView: NSView { overlayWindow.contentView! }
     private(set) var pets: [String: PetView] = [:]
     private(set) var lastSessions: [SessionInfo] = []
-    private var walkArea = WalkArea(minX: 0, maxX: 800, floorY: 0)
+    private var roamArea = RoamArea(minX: 0, maxX: 800, minY: 0, maxY: 600)
     private var tickTimer: Timer?
 
     var onCountChanged: ((Int) -> Void)?
@@ -48,15 +48,17 @@ final class PetManager {
         guard let screen = NSScreen.main ?? NSScreen.screens.first else { return }
         overlayWindow.setFrame(screen.frame, display: true)
         let visible = screen.visibleFrame
-        walkArea = WalkArea(
-            minX: visible.minX - screen.frame.minX + 12,
-            maxX: visible.maxX - screen.frame.minX - PetView.viewSize.width - 12,
-            floorY: max(0, visible.minY - screen.frame.minY - 4)
+        roamArea = RoamArea(
+            minX: visible.minX - screen.frame.minX + 10,
+            maxX: visible.maxX - screen.frame.minX - PetView.viewSize.width - 10,
+            minY: max(0, visible.minY - screen.frame.minY + 2),
+            maxY: visible.maxY - screen.frame.minY - PetView.viewSize.height - 6
         )
         for pet in pets.values {
-            pet.walkArea = walkArea
-            let x = min(max(pet.frame.origin.x, walkArea.minX), walkArea.maxX)
-            pet.setFrameOrigin(NSPoint(x: x, y: walkArea.floorY))
+            pet.roamArea = roamArea
+            let x = min(max(pet.frame.origin.x, roamArea.minX), roamArea.maxX)
+            let y = min(max(pet.frame.origin.y, roamArea.minY), roamArea.maxY)
+            pet.setFrameOrigin(NSPoint(x: x, y: y))
         }
     }
 
@@ -80,10 +82,11 @@ final class PetManager {
     }
 
     private func addPet(_ info: SessionInfo) {
-        let pet = PetView(info: info, walkArea: walkArea)
+        let pet = PetView(info: info, roamArea: roamArea)
         pet.onConfetti = { [weak self] p in self?.confetti(over: p) }
-        let x = CGFloat.random(in: walkArea.minX...max(walkArea.minX + 1, walkArea.maxX))
-        pet.setFrameOrigin(NSPoint(x: x, y: walkArea.floorY))
+        let x = CGFloat.random(in: roamArea.minX...max(roamArea.minX + 1, roamArea.maxX))
+        let y = CGFloat.random(in: roamArea.minY...max(roamArea.minY + 1, roamArea.maxY))
+        pet.setFrameOrigin(NSPoint(x: x, y: y))
         contentView.addSubview(pet)
         pets[info.sessionId] = pet
     }
