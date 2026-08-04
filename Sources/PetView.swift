@@ -368,6 +368,7 @@ final class PetView: NSView {
 
     func tick(now: CFTimeInterval) {
         if perimT < 0 { placeOnPerimeter() }
+        purgeExpiredBabies(now: now)
 
         if state == .celebrating && now > celebrateUntil {
             applyState(mappedState(), animated: true)
@@ -518,6 +519,97 @@ final class PetView: NSView {
         hop.keyTimes = [0, 0.5, 1]
         hop.duration = 0.4
         body.add(hop, forKey: "hop")
+    }
+
+    // MARK: - Subagent babies (mini crabs around the parent)
+
+    private var babyLayers: [String: CALayer] = [:]
+    private var babyAddedAt: [String: CFTimeInterval] = [:]
+    private static let babySlots: [CGFloat] = [-56, 56, -94, 94, -132, 132, -170, 170]
+
+    func addBaby(agentId: String) {
+        guard babyLayers[agentId] == nil, babyLayers.count < Self.babySlots.count else { return }
+        let slot = Self.babySlots[babyLayers.count]
+        let baby = Self.makeBaby(capColor: cap.fillColor)
+        baby.position = CGPoint(x: 40 + slot, y: 31)   // feet on the parent's leg line
+        body.addSublayer(baby)
+        babyLayers[agentId] = baby
+        babyAddedAt[agentId] = CACurrentMediaTime()
+        let spring = CASpringAnimation(keyPath: "transform.scale")
+        spring.fromValue = 0.01
+        spring.toValue = 1
+        spring.damping = 9
+        spring.initialVelocity = 6
+        spring.duration = spring.settlingDuration
+        baby.add(spring, forKey: "spawn")
+    }
+
+    func removeBaby(agentId: String) {
+        guard let baby = babyLayers.removeValue(forKey: agentId) else { return }
+        babyAddedAt.removeValue(forKey: agentId)
+        CATransaction.begin()
+        CATransaction.setCompletionBlock { baby.removeFromSuperlayer() }
+        let out = CABasicAnimation(keyPath: "transform.scale")
+        out.fromValue = 1
+        out.toValue = 0.01
+        out.duration = 0.25
+        out.fillMode = .forwards
+        out.isRemovedOnCompletion = false
+        baby.add(out, forKey: "out")
+        CATransaction.commit()
+    }
+
+    /// orphan cleanup for missed SubagentStop events
+    private func purgeExpiredBabies(now: CFTimeInterval) {
+        guard !babyLayers.isEmpty else { return }
+        for (id, t) in babyAddedAt where now - t > 30 * 60 {
+            removeBaby(agentId: id)
+        }
+    }
+
+    private static func makeBaby(capColor: CGColor?) -> CALayer {
+        let px: CGFloat = 3
+        let group = CALayer()
+        func shape(_ cells: [(Int, Int)], _ color: CGColor?) -> CAShapeLayer {
+            let l = CAShapeLayer()
+            l.path = miniPath(cells: cells, px: px)
+            l.fillColor = color
+            l.contentsScale = NSScreen.main?.backingScaleFactor ?? 2
+            return l
+        }
+        group.addSublayer(shape(shellCells, claudeOrange.cgColor))
+        group.addSublayer(shape(legCellsA, claudeOrange.cgColor))
+        group.addSublayer(shape(capCells, capColor ?? claudeOrange.cgColor))
+        group.addSublayer(shape([(2, 3), (8, 3)], inkColor.cgColor))   // eyes
+        // excited toddler bob + wiggle
+        let bob = CABasicAnimation(keyPath: "transform.translation.y")
+        bob.fromValue = 0
+        bob.toValue = 2.5
+        bob.duration = 0.28
+        bob.autoreverses = true
+        bob.repeatCount = .infinity
+        group.add(bob, forKey: "bob")
+        let wiggle = CABasicAnimation(keyPath: "transform.translation.x")
+        wiggle.fromValue = -5
+        wiggle.toValue = 5
+        wiggle.duration = Double.random(in: 1.1...2.0)
+        wiggle.autoreverses = true
+        wiggle.repeatCount = .infinity
+        group.add(wiggle, forKey: "wiggle")
+        return group
+    }
+
+    /// mini clawd path centered on (0,0), rows -2…5 (cap included)
+    private static func miniPath(cells: [(Int, Int)], px: CGFloat) -> CGPath {
+        let path = CGMutablePath()
+        let w = CGFloat(gridW) * px
+        let h = CGFloat(8) * px
+        for (col, row) in cells {
+            path.addRect(CGRect(x: -w / 2 + CGFloat(col) * px,
+                                y: h / 2 - CGFloat(row + 3) * px,
+                                width: px, height: px))
+        }
+        return path
     }
 
     // MARK: - Blinking

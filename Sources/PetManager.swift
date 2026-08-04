@@ -127,6 +127,8 @@ final class PetManager {
             pet.tick(now: now)
         }
         updateMouseInteractivity()
+        tickCount += 1
+        if tickCount % 45 == 0 { checkGreetings(now: now) }
     }
 
     /// The overlay is click-through except when the cursor is over a crab's body —
@@ -161,8 +163,45 @@ final class PetManager {
         case "Notification":
             let msg = (event.payload["message"] as? String) ?? "needs you!"
             pets[event.sessionId]?.showNote(String(msg.prefix(38)))
+        case "SubagentStart":
+            if let agentId = event.payload["agent_id"] as? String {
+                pets[event.sessionId]?.addBaby(agentId: agentId)
+            }
+        case "SubagentStop":
+            if let agentId = event.payload["agent_id"] as? String {
+                pets[event.sessionId]?.removeBaby(agentId: agentId)
+            }
+        case "StopFailure":
+            pets[event.sessionId]?.showNote("⚠️")
         default:
             break
+        }
+    }
+
+    // MARK: - Crab greetings (ambient: nearby crabs wave at each other)
+
+    private var greetCooldown: [String: CFTimeInterval] = [:]
+    private var tickCount = 0
+
+    private func checkGreetings(now: CFTimeInterval) {
+        let list = Array(pets.values)
+        guard list.count > 1 else { return }
+        for i in 0..<list.count {
+            for j in (i + 1)..<list.count {
+                let a = list[i], b = list[j]
+                guard a.state == .idle || a.state == .working,
+                      b.state == .idle || b.state == .working else { continue }
+                let dx = a.frame.midX - b.frame.midX
+                let dy = a.frame.midY - b.frame.midY
+                guard dx * dx + dy * dy < 80 * 80 else { continue }
+                let key = a.sessionId < b.sessionId ? a.sessionId + b.sessionId
+                                                    : b.sessionId + a.sessionId
+                if now - (greetCooldown[key] ?? 0) > 90 {
+                    greetCooldown[key] = now
+                    a.showNote("👋")
+                    b.showNote("👋")
+                }
+            }
         }
     }
 

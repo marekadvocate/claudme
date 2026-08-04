@@ -8,7 +8,8 @@ enum HooksInstallerError: Error, CustomStringConvertible {
 /// Merges/removes ClaudePet command hooks in ~/.claude/settings.json.
 /// Recognizes its own entries by the "ClaudePet" marker in the command string.
 enum HooksInstaller {
-    static let events = ["SessionStart", "UserPromptSubmit", "Stop", "Notification", "SessionEnd"]
+    static let events = ["SessionStart", "UserPromptSubmit", "Stop", "Notification", "SessionEnd",
+                         "SubagentStart", "SubagentStop", "StopFailure"]
     static let marker = "ClaudePet"
 
     static var settingsURL: URL {
