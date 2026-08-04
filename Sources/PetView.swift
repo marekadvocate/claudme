@@ -64,6 +64,11 @@ final class PetView: NSView {
     private var nextChatterAt: CFTimeInterval = 0
     private var blinkTimer: Timer?
 
+    // beer break
+    private var beerUntil: CFTimeInterval = 0
+    private var nextBeerAt: CFTimeInterval = CACurrentMediaTime() + Double.random(in: 90...300)
+    private var beerMug: CALayer?
+
     // MARK: - Init
 
     init(info: SessionInfo, roamArea: RoamArea) {
@@ -385,6 +390,13 @@ final class PetView: NSView {
         case .sleeping:
             crawlTowardBottom()
         case .idle, .working:
+            if now < beerUntil {
+                break   // enjoying a beer, no crawling
+            }
+            if now >= nextBeerAt {
+                beerBreak(now: now)
+                break
+            }
             if slideRemaining > 0 {
                 crawl(by: speed / 30)
                 if slideRemaining <= 0 {
@@ -401,6 +413,120 @@ final class PetView: NSView {
                 bubble.show("…", for: 2.2)
             }
         }
+    }
+
+    // MARK: - Beer break 🍺 (sem tam si daju pivo pocas prace)
+
+    func beerBreak(now: CFTimeInterval = CACurrentMediaTime()) {
+        guard beerMug == nil else { return }
+        beerUntil = now + 4.6
+        nextBeerAt = now + Double.random(in: 240...600)
+        slideRemaining = 0
+        legPhase = 0
+        legs.path = Self.legsFrameA
+
+        let mug = Self.makeBeerMug()
+        mug.position = CGPoint(x: 57, y: 33)   // held in front of the face
+        body.addSublayer(mug)
+        beerMug = mug
+
+        let pop = CASpringAnimation(keyPath: "transform.scale")
+        pop.fromValue = 0.01
+        pop.toValue = 1
+        pop.damping = 10
+        pop.initialVelocity = 5
+        pop.duration = pop.settlingDuration
+        mug.add(pop, forKey: "pop")
+
+        // three sips — the mug tips toward the mouth
+        let sips = CAKeyframeAnimation(keyPath: "transform.rotation.z")
+        sips.values = [0, 0.5, 0.12, 0.55, 0.15, 0.6, 0]
+        sips.keyTimes = [0, 0.18, 0.33, 0.5, 0.65, 0.85, 1]
+        sips.duration = 3.4
+        sips.beginTime = CACurrentMediaTime() + 0.5
+        mug.add(sips, forKey: "sips")
+
+        squint(true)   // happy eyes
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 4.0) { [weak self] in
+            guard let self else { return }
+            self.squint(false)
+            if let mug = self.beerMug {
+                self.beerMug = nil
+                CATransaction.begin()
+                CATransaction.setCompletionBlock { mug.removeFromSuperlayer() }
+                let out = CABasicAnimation(keyPath: "transform.scale")
+                out.fromValue = 1
+                out.toValue = 0.01
+                out.duration = 0.22
+                out.fillMode = .forwards
+                out.isRemovedOnCompletion = false
+                mug.add(out, forKey: "out")
+                CATransaction.commit()
+            }
+            self.bubble.show("ahh~", for: 1.8)
+        }
+    }
+
+    private func squint(_ on: Bool) {
+        guard state != .sleeping else { return }
+        let t = on ? CATransform3DMakeScale(1, 0.45, 1) : CATransform3DIdentity
+        eyeLeft.transform = t
+        eyeRight.transform = t
+    }
+
+    /// pixel beer mug: white foam, amber body, handle on the right
+    private static func makeBeerMug() -> CALayer {
+        let px: CGFloat = 3
+        let group = CALayer()
+        group.bounds = CGRect(x: 0, y: 0, width: 6 * px, height: 6 * px)
+        group.anchorPoint = CGPoint(x: 0.15, y: 0.1)   // tilt around the bottom-left
+
+        func rect(_ col: Int, _ row: Int) -> CGRect {   // row 0 = top
+            CGRect(x: CGFloat(col) * px, y: CGFloat(5 - row) * px, width: px, height: px)
+        }
+
+        let scaleFactor = NSScreen.main?.backingScaleFactor ?? 2
+
+        let beer = CAShapeLayer()
+        let beerPath = CGMutablePath()
+        for row in 1...5 { for col in 0...4 { beerPath.addRect(rect(col, row)) } }
+        for row in 2...4 { beerPath.addRect(rect(5, row)) }   // handle
+        beer.path = beerPath
+        beer.fillColor = NSColor(srgbRed: 0.95, green: 0.66, blue: 0.12, alpha: 1).cgColor
+        beer.contentsScale = scaleFactor
+        group.addSublayer(beer)
+
+        let foam = CAShapeLayer()
+        let foamPath = CGMutablePath()
+        for col in 0...4 { foamPath.addRect(rect(col, 0)) }
+        foam.path = foamPath
+        foam.fillColor = NSColor(white: 0.98, alpha: 1).cgColor
+        foam.contentsScale = scaleFactor
+        group.addSublayer(foam)
+
+        // rising bubbles above the foam
+        for (i, dx) in [CGFloat(4.5), CGFloat(10.5)].enumerated() {
+            let dot = CALayer()
+            dot.backgroundColor = NSColor(white: 1, alpha: 0.9).cgColor
+            dot.bounds = CGRect(x: 0, y: 0, width: 2, height: 2)
+            dot.cornerRadius = 1
+            dot.position = CGPoint(x: dx, y: 19)
+            group.addSublayer(dot)
+            let up = CABasicAnimation(keyPath: "transform.translation.y")
+            up.fromValue = 0
+            up.toValue = 9
+            up.duration = 1.1 + Double(i) * 0.3
+            up.repeatCount = .infinity
+            dot.add(up, forKey: "up")
+            let fade = CABasicAnimation(keyPath: "opacity")
+            fade.fromValue = 1
+            fade.toValue = 0
+            fade.duration = up.duration
+            fade.repeatCount = .infinity
+            dot.add(fade, forKey: "fade")
+        }
+        return group
     }
 
     private func decide(now: CFTimeInterval) {

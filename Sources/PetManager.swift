@@ -209,6 +209,10 @@ final class PetManager {
         pets.values.randomElement()?.celebrate()
     }
 
+    func testBeer() {
+        pets.values.randomElement()?.beerBreak()
+    }
+
     /// Debug: renders the overlay's layer tree to App Support/ClaudePet/snapshot.png.
     /// Needs no screen-recording permission (we only render our own layers).
     func saveSnapshot() {
