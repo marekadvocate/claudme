@@ -59,6 +59,10 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         beer.target = self
         menu.addItem(beer)
 
+        let trick = NSMenuItem(title: "Balloon ride 🎈", action: #selector(balloonRide), keyEquivalent: "")
+        trick.target = self
+        menu.addItem(trick)
+
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: "Quit ClaudePet", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
     }
@@ -67,6 +71,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     @objc private func removeHooks() { runHookAction { try HooksInstaller.remove() } }
     @objc private func testCelebrate() { manager.testCelebrate() }
     @objc private func beerBreak() { manager.testBeer() }
+    @objc private func balloonRide() { manager.testTrick() }
 
     private func runHookAction(_ op: () throws -> Void) {
         do {

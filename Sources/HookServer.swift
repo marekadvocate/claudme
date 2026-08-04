@@ -14,6 +14,7 @@ final class HookServer {
     var onEvent: ((HookEvent) -> Void)?   // delivered on main thread
     var onSnapshot: (() -> Void)?         // debug: GET /snapshot renders overlay to PNG
     var onBeer: (() -> Void)?             // debug: GET /beer → random crab has a beer
+    var onTrick: (() -> Void)?            // debug: GET /trick → random crab balloon ride
 
     private var listener: NWListener?
     private let queue = DispatchQueue(label: "claudepet.hooks")
@@ -70,6 +71,8 @@ final class HookServer {
                     DispatchQueue.main.async { [weak self] in self?.onSnapshot?() }
                 } else if request.head.hasPrefix("GET /beer") {
                     DispatchQueue.main.async { [weak self] in self?.onBeer?() }
+                } else if request.head.hasPrefix("GET /trick") {
+                    DispatchQueue.main.async { [weak self] in self?.onTrick?() }
                 } else {
                     self.dispatch(request.body)
                 }

@@ -83,9 +83,26 @@ final class PetManager {
         capColors = colors
     }
 
+    private var prevBusyCount = 0
+    private var lastWaveAt: CFTimeInterval = 0
+
     func sync(_ sessions: [SessionInfo]) {
         lastSessions = sessions
         assignCapColors(sessions)
+
+        // stadium wave when the last busy session finishes
+        let busyCount = sessions.filter { $0.status == "busy" }.count
+        if prevBusyCount > 0, busyCount == 0, pets.count >= 2,
+           CACurrentMediaTime() - lastWaveAt > 120 {
+            lastWaveAt = CACurrentMediaTime()
+            let sorted = pets.values.sorted { $0.frame.origin.x < $1.frame.origin.x }
+            for (i, pet) in sorted.enumerated() {
+                DispatchQueue.main.asyncAfter(deadline: .now() + Double(i) * 0.13) { [weak pet] in
+                    pet?.waveHop()
+                }
+            }
+        }
+        prevBusyCount = busyCount
         let ids = Set(sessions.map { $0.sessionId })
         for info in sessions {
             if let pet = pets[info.sessionId] {
@@ -107,8 +124,24 @@ final class PetManager {
     private func addPet(_ info: SessionInfo) {
         let pet = PetView(info: info, roamArea: roamArea)   // places itself on the perimeter
         pet.onConfetti = { [weak self] p in self?.confetti(over: p) }
+        pet.onBeerStarted = { [weak self] p in self?.maybeClink(around: p) }
         contentView.addSubview(pet)
         pets[info.sessionId] = pet
+    }
+
+    /// a nearby crab joins the beer for a toast 🍻
+    private func maybeClink(around pet: PetView) {
+        for other in pets.values where other !== pet {
+            guard other.state == .idle || other.state == .working else { continue }
+            let dx = pet.frame.midX - other.frame.midX
+            let dy = pet.frame.midY - other.frame.midY
+            if dx * dx + dy * dy < 140 * 140 {
+                other.beerBreak(joining: true)
+                pet.showClink()
+                other.showClink()
+                break
+            }
+        }
     }
 
     private func despawn(_ pet: PetView) {
@@ -129,22 +162,46 @@ final class PetManager {
         updateMouseInteractivity()
         tickCount += 1
         if tickCount % 45 == 0 { checkGreetings(now: now) }
+        if tickCount % 20 == 0 { checkSeparation() }
+    }
+
+    /// crabs shouldn't stack — too-close pairs get nudged apart
+    private func checkSeparation() {
+        let list = Array(pets.values)
+        guard list.count > 1 else { return }
+        for i in 0..<list.count {
+            for j in (i + 1)..<list.count {
+                let a = list[i], b = list[j]
+                let dx = a.frame.midX - b.frame.midX
+                let dy = a.frame.midY - b.frame.midY
+                if dx * dx + dy * dy < 44 * 44 {
+                    a.separate(from: b)
+                }
+            }
+        }
     }
 
     /// The overlay is click-through except when the cursor is over a crab's body —
     /// then it accepts the click (PetView.mouseDown focuses that session's terminal).
+    private var lastHoveredId: String?
+
     private func updateMouseInteractivity() {
         let mouse = NSEvent.mouseLocation
         let local = NSPoint(x: mouse.x - overlayWindow.frame.origin.x,
                             y: mouse.y - overlayWindow.frame.origin.y)
-        var hover = false
+        var hoveredPet: PetView?
         for pet in pets.values {
             let r = pet.bodyHitRect.offsetBy(dx: pet.frame.origin.x, dy: pet.frame.origin.y)
-            if r.contains(local) { hover = true; break }
+            if r.contains(local) { hoveredPet = pet; break }
         }
+        let hover = hoveredPet != nil
         if overlayWindow.ignoresMouseEvents == hover {
             overlayWindow.ignoresMouseEvents = !hover
         }
+        if let pet = hoveredPet, pet.sessionId != lastHoveredId {
+            pet.hoverPoke()   // startled little jump when the cursor arrives
+        }
+        lastHoveredId = hoveredPet?.sessionId
     }
 
     // MARK: - Hook events
@@ -211,6 +268,10 @@ final class PetManager {
 
     func testBeer() {
         pets.values.randomElement()?.beerBreak()
+    }
+
+    func testTrick() {
+        pets.values.randomElement()?.doTrick(forced: 1)   // balloon
     }
 
     /// Debug: renders the overlay's layer tree to App Support/ClaudePet/snapshot.png.

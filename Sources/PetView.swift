@@ -68,6 +68,14 @@ final class PetView: NSView {
     private var beerUntil: CFTimeInterval = 0
     private var nextBeerAt: CFTimeInterval = CACurrentMediaTime() + Double.random(in: 90...300)
     private var beerMug: CALayer?
+    var onBeerStarted: ((PetView) -> Void)?   // manager checks for a clink partner
+
+    // rare tricks + idle mumbles + hover pokes
+    private var trickUntil: CFTimeInterval = 0
+    private var nextTrickAt: CFTimeInterval = CACurrentMediaTime() + Double.random(in: 300...900)
+    private var nextMumbleAt: CFTimeInterval = CACurrentMediaTime() + Double.random(in: 180...480)
+    private var lastPokeAt: CFTimeInterval = 0
+    private static let mumbles = ["🦀", "hmm…", "☕", "šup šup", "42", "vibe"]
 
     // MARK: - Init
 
@@ -390,11 +398,15 @@ final class PetView: NSView {
         case .sleeping:
             crawlTowardBottom()
         case .idle, .working:
-            if now < beerUntil {
-                break   // enjoying a beer, no crawling
+            if now < beerUntil || now < trickUntil {
+                break   // enjoying a beer / mid-trick, no crawling
             }
             if now >= nextBeerAt {
                 beerBreak(now: now)
+                break
+            }
+            if state == .idle && now >= nextTrickAt {
+                doTrick(now: now)
                 break
             }
             if slideRemaining > 0 {
@@ -412,18 +424,136 @@ final class PetView: NSView {
                 nextChatterAt = now + Double.random(in: 12...25)
                 bubble.show("…", for: 2.2)
             }
+            if state == .idle && now >= nextMumbleAt {
+                nextMumbleAt = now + Double.random(in: 180...480)
+                bubble.show(Self.mumbles.randomElement()!, for: 2.4)
+            }
+        }
+    }
+
+    // MARK: - Social & ambient reactions
+
+    /// staggered hop for the all-sessions-done stadium wave
+    func waveHop() {
+        smallHop()
+    }
+
+    /// cursor moved onto the crab — startled little jump (cooldown so it stays cute)
+    func hoverPoke() {
+        let now = CACurrentMediaTime()
+        guard now - lastPokeAt > 8 else { return }
+        lastPokeAt = now
+        smallHop()
+        blinkOnce()
+    }
+
+    /// beer buddy toast
+    func showClink() {
+        bubble.show("🍻", for: 2.2)
+    }
+
+    var perimeterPosition: CGFloat { perimT }
+
+    /// crabs shouldn't pile up — slide away from a too-close neighbour
+    func separate(from other: PetView) {
+        let now = CACurrentMediaTime()
+        guard state == .idle || state == .working,
+              now >= beerUntil, now >= trickUntil else { return }
+        let delta = Self.shortestDelta(from: other.perimeterPosition, to: perimT, length: perimeterLength)
+        slideDir = delta >= 0 ? 1 : -1
+        if slideRemaining < 50 { slideRemaining = 50 }
+        speed = max(speed, 36)
+    }
+
+    // MARK: - Rare tricks (spin / balloon ride)
+
+    func doTrick(now: CFTimeInterval = CACurrentMediaTime(), forced: Int? = nil) {
+        guard beerMug == nil, now >= trickUntil else { return }
+        nextTrickAt = now + Double.random(in: 600...1500)
+        slideRemaining = 0
+        legPhase = 0
+        legs.path = Self.legsFrameA
+        let kind = forced ?? Int.random(in: 0...1)
+        if kind == 0 {
+            spinTrick(now: now)
+        } else {
+            balloonTrick(now: now)
+        }
+    }
+
+    private func spinTrick(now: CFTimeInterval) {
+        trickUntil = now + 1.3
+        let spin = CABasicAnimation(keyPath: "transform.rotation.z")
+        spin.byValue = 2 * CGFloat.pi
+        spin.duration = 0.9
+        spin.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+        body.add(spin, forKey: "trickSpin")
+    }
+
+    /// grabs a balloon, floats up off the edge, drifts back down
+    private func balloonTrick(now: CFTimeInterval) {
+        trickUntil = now + 5.0
+        let scaleFactor = NSScreen.main?.backingScaleFactor ?? 2
+
+        let group = CALayer()
+        let string = CAShapeLayer()
+        let stringPath = CGMutablePath()
+        stringPath.move(to: CGPoint(x: 40, y: 85))
+        stringPath.addLine(to: CGPoint(x: 40, y: 75))
+        string.path = stringPath
+        string.strokeColor = NSColor(white: 0.25, alpha: 0.8).cgColor
+        string.lineWidth = 1
+        group.addSublayer(string)
+
+        let balloon = CALayer()
+        balloon.backgroundColor = NSColor(srgbRed: 0.88, green: 0.20, blue: 0.25, alpha: 1).cgColor
+        balloon.bounds = CGRect(x: 0, y: 0, width: 13, height: 15)
+        balloon.cornerRadius = 6.5
+        balloon.position = CGPoint(x: 40, y: 92)
+        group.addSublayer(balloon)
+
+        for l in [group, balloon, string] { l.contentsScale = scaleFactor }
+        body.addSublayer(group)
+
+        let pop = CASpringAnimation(keyPath: "transform.scale")
+        pop.fromValue = 0.01
+        pop.toValue = 1
+        pop.damping = 10
+        pop.duration = pop.settlingDuration
+        group.add(pop, forKey: "pop")
+
+        // up, hover, back down — in body-local coords, so wall crabs float away from the wall
+        let float = CAKeyframeAnimation(keyPath: "transform.translation.y")
+        float.values = [0, 42, 42, 0]
+        float.keyTimes = [0, 0.3, 0.72, 1]
+        float.duration = 4.4
+        body.add(float, forKey: "trickFloat")
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 4.4) { [weak self] in
+            guard self != nil else { group.removeFromSuperlayer(); return }
+            CATransaction.begin()
+            CATransaction.setCompletionBlock { group.removeFromSuperlayer() }
+            let out = CABasicAnimation(keyPath: "opacity")
+            out.fromValue = 1
+            out.toValue = 0
+            out.duration = 0.25
+            out.fillMode = .forwards
+            out.isRemovedOnCompletion = false
+            group.add(out, forKey: "out")
+            CATransaction.commit()
         }
     }
 
     // MARK: - Beer break 🍺 (sem tam si daju pivo pocas prace)
 
-    func beerBreak(now: CFTimeInterval = CACurrentMediaTime()) {
-        guard beerMug == nil else { return }
+    func beerBreak(now: CFTimeInterval = CACurrentMediaTime(), joining: Bool = false) {
+        guard beerMug == nil, now >= trickUntil else { return }
         beerUntil = now + 4.6
         nextBeerAt = now + Double.random(in: 240...600)
         slideRemaining = 0
         legPhase = 0
         legs.path = Self.legsFrameA
+        if !joining { onBeerStarted?(self) }
 
         let mug = Self.makeBeerMug()
         mug.position = CGPoint(x: 57, y: 33)   // held in front of the face
