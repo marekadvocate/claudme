@@ -411,8 +411,9 @@ final class PetView: NSView {
         if seg != currentSegment {
             let firstTime = currentSegment < 0
             currentSegment = seg
-            // legs point at the edge: bottom 0°, right -90°, top 180°, left +90°
-            let angles: [CGFloat] = [0, -.pi / 2, .pi, .pi / 2]
+            // legs point at the edge: local -y rotated by θ lands at (sin θ, -cos θ)
+            // bottom → 0, right wall → +90° CCW, ceiling → 180°, left wall → -90°
+            let angles: [CGFloat] = [0, .pi / 2, .pi, -.pi / 2]
             setBodyAngle(angles[seg], animated: !firstTime)
             // bubble goes below the pet when crawling on the ceiling
             bubble.setFrameOrigin(NSPoint(x: bubble.frame.origin.x, y: seg == 2 ? 22 : 90))
