@@ -506,6 +506,67 @@ final class PetView: NSView {
         namePill.frame = NSRect(x: pillCenterX - w / 2, y: 2, width: w, height: h)
     }
 
+    // MARK: - Click interaction: jump to the session's terminal
+
+    /// clickable area around the crab's body (local coords)
+    var bodyHitRect: NSRect { NSRect(x: 25, y: 18, width: 100, height: 84) }
+
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        let p = convert(point, from: superview)
+        return bodyHitRect.contains(p) ? self : nil
+    }
+
+    override func resetCursorRects() {
+        addCursorRect(bodyHitRect, cursor: .pointingHand)
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        clickSquash()
+        focusTerminal()
+    }
+
+    override func rightMouseDown(with event: NSEvent) {
+        let menu = NSMenu()
+        menu.autoenablesItems = false
+        let title = NSMenuItem(title: "\(info.name) — \(info.status)", action: nil, keyEquivalent: "")
+        title.isEnabled = false
+        menu.addItem(title)
+        if !info.cwd.isEmpty {
+            let cwd = NSMenuItem(title: (info.cwd as NSString).abbreviatingWithTildeInPath,
+                                 action: nil, keyEquivalent: "")
+            cwd.isEnabled = false
+            menu.addItem(cwd)
+        }
+        menu.addItem(.separator())
+        let focus = NSMenuItem(title: "Show terminal", action: #selector(menuFocus), keyEquivalent: "")
+        focus.target = self
+        focus.isEnabled = true
+        menu.addItem(focus)
+        NSMenu.popUpContextMenu(menu, with: event, for: self)
+    }
+
+    @objc private func menuFocus() {
+        focusTerminal()
+    }
+
+    private func clickSquash() {
+        let squash = CAKeyframeAnimation(keyPath: "transform.scale")
+        squash.values = [currentScale, currentScale * 0.78, currentScale * 1.12, currentScale]
+        squash.keyTimes = [0, 0.3, 0.7, 1]
+        squash.duration = 0.35
+        body.add(squash, forKey: "squash")
+        smallHop()
+        blinkOnce()
+    }
+
+    private func focusTerminal() {
+        if let appName = TerminalFocus.focusApp(forSessionPID: info.pid) {
+            bubble.show("→ \(appName)", for: 1.6)
+        } else {
+            bubble.show("?", for: 1.2)
+        }
+    }
+
     func cleanup() {
         blinkTimer?.invalidate()
         blinkTimer = nil

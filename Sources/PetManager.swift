@@ -102,6 +102,23 @@ final class PetManager {
         for pet in pets.values {
             pet.tick(now: now)
         }
+        updateMouseInteractivity()
+    }
+
+    /// The overlay is click-through except when the cursor is over a crab's body —
+    /// then it accepts the click (PetView.mouseDown focuses that session's terminal).
+    private func updateMouseInteractivity() {
+        let mouse = NSEvent.mouseLocation
+        let local = NSPoint(x: mouse.x - overlayWindow.frame.origin.x,
+                            y: mouse.y - overlayWindow.frame.origin.y)
+        var hover = false
+        for pet in pets.values {
+            let r = pet.bodyHitRect.offsetBy(dx: pet.frame.origin.x, dy: pet.frame.origin.y)
+            if r.contains(local) { hover = true; break }
+        }
+        if overlayWindow.ignoresMouseEvents == hover {
+            overlayWindow.ignoresMouseEvents = !hover
+        }
     }
 
     // MARK: - Hook events
