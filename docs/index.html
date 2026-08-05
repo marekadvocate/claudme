@@ -84,15 +84,18 @@
 
   .crab{position:absolute;left:0;top:0;will-change:transform;pointer-events:none}
   .crab canvas{display:block;image-rendering:pixelated}
+  /* labels live in screen space, not inside the rotated crab, so they stay
+     upright and can be clamped to the screen edges */
   .tag{
-    position:absolute;left:50%;transform:translateX(-50%);white-space:nowrap;
+    position:absolute;transform:translateX(-50%);white-space:nowrap;
     font:600 9px/1 var(--font);color:#fff;background:rgba(0,0,0,.42);
-    padding:2px 6px;border-radius:6px;backdrop-filter:blur(3px)
+    padding:2px 6px;border-radius:6px;backdrop-filter:blur(3px);pointer-events:none
   }
   .bub{
-    position:absolute;left:50%;transform:translateX(-50%) scale(.6);white-space:nowrap;
+    position:absolute;transform:translateX(-50%) scale(.6);white-space:nowrap;
     font:500 10px/1 var(--font);color:#1a1a18;background:rgba(255,255,255,.95);
-    padding:4px 8px;border-radius:8px;opacity:0;transition:opacity .18s,transform .18s
+    padding:4px 8px;border-radius:8px;opacity:0;pointer-events:none;
+    transition:opacity .18s,transform .18s;transform-origin:center bottom
   }
   .bub.on{opacity:1;transform:translateX(-50%) scale(1)}
 
@@ -391,10 +394,10 @@ open build/Claudme.app</pre>
     const el = document.createElement('div');
     el.className = 'crab';
     const cv = document.createElement('canvas');
+    el.append(cv);
     const tag = document.createElement('div'); tag.className='tag'; tag.textContent=name;
     const bub = document.createElement('div'); bub.className='bub';
-    el.append(cv, tag, bub);
-    screen.appendChild(el);
+    screen.append(el, tag, bub);
     const c = {
       el, cv, tag, bub, cap: CAPS[capIdx % CAPS.length], name,
       t, dir: Math.random()<.5?1:-1, speed: 14+Math.random()*14,
@@ -427,15 +430,19 @@ open build/Claudme.app</pre>
     const hx = seg===1 ? -hop : seg===3 ? hop : 0;
     const hy = seg===0 ? -hop : seg===2 ? hop : 0;
 
-    c.el.style.transform =
-      `translate(${x - W/2 + off[0] + hx}px, ${y - H/2 + off[1] + hy}px) rotate(${rot}deg)`;
-    c.tag.style.top  = seg===2 ? (H+5)+'px' : '-16px';
-    c.bub.style.top  = seg===2 ? (H+20)+'px' : '-32px';
-    // labels stay upright while the body turns
-    c.tag.style.transform = `translateX(-50%) rotate(${-rot}deg)`;
-    c.bub.style.transform = c.bub.classList.contains('on')
-      ? `translateX(-50%) rotate(${-rot}deg) scale(1)`
-      : `translateX(-50%) rotate(${-rot}deg) scale(.6)`;
+    const bx = x + off[0] + hx, by = y + off[1] + hy;   // body centre in screen space
+    c.el.style.transform = `translate(${bx - W/2}px, ${by - H/2}px) rotate(${rot}deg)`;
+
+    // On the ceiling the label hangs below the crab; everywhere else it sits above.
+    // Both are clamped so they never run off the screen at a corner or a side wall.
+    const clamp = (el, cx) => {
+      const half = (el.offsetWidth || 60) / 2;
+      return Math.min(Math.max(cx, half + 4), w - half - 4);
+    };
+    c.tag.style.left = clamp(c.tag, bx) + 'px';
+    c.tag.style.top  = (seg === 2 ? by + H/2 + 5 : by - H/2 - 16) + 'px';
+    c.bub.style.left = clamp(c.bub, bx) + 'px';
+    c.bub.style.top  = (seg === 2 ? by + H/2 + 21 : by - H/2 - 34) + 'px';
     if (seg !== c.seg) c.seg = seg;
   }
 
