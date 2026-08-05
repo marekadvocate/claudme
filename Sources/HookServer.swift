@@ -74,7 +74,7 @@ final class HookServer {
                 } else if request.head.hasPrefix("GET /trick") {
                     DispatchQueue.main.async { [weak self] in self?.onTrick?() }
                 } else {
-                    self.dispatch(request.body)
+                    self.dispatch(request.body, head: request.head)
                 }
             } else if isComplete || error != nil {
                 conn.cancel()
@@ -110,11 +110,23 @@ final class HookServer {
         return (head, data.subdata(in: bodyStart..<(bodyStart + contentLength)))
     }
 
-    private func dispatch(_ body: Data) {
+    private func dispatch(_ body: Data, head: String) {
         guard !body.isEmpty,
-              let obj = (try? JSONSerialization.jsonObject(with: body)) as? [String: Any],
+              var obj = (try? JSONSerialization.jsonObject(with: body)) as? [String: Any],
               let name = obj["hook_event_name"] as? String
         else { return }
+        // the hook command forwards the session's env as headers (remote detection)
+        var remoteValue = ""
+        var bridgeValue = ""
+        for line in head.components(separatedBy: "\r\n") {
+            let lower = line.lowercased()
+            if lower.hasPrefix("x-cc-remote:") {
+                remoteValue = String(line.dropFirst("x-cc-remote:".count)).trimmingCharacters(in: .whitespaces)
+            } else if lower.hasPrefix("x-cc-bridge:") {
+                bridgeValue = String(line.dropFirst("x-cc-bridge:".count)).trimmingCharacters(in: .whitespaces)
+            }
+        }
+        obj["_remote"] = (remoteValue.lowercased() == "true") || !bridgeValue.isEmpty
         let event = HookEvent(
             name: name,
             sessionId: obj["session_id"] as? String ?? "",

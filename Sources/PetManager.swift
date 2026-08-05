@@ -86,9 +86,30 @@ final class PetManager {
     private var prevBusyCount = 0
     private var lastWaveAt: CFTimeInterval = 0
 
+    /// unique royal names among live crabs (numeral bumps on collision)
+    private(set) var royalNames: [String: String] = [:]
+
+    private func assignRoyalNames(_ sessions: [SessionInfo]) {
+        var used = Set<String>()
+        var out: [String: String] = [:]
+        for s in sessions.sorted(by: { $0.name < $1.name }) {
+            let kind = ModelKind.parse(s.model)
+            var shift = 0
+            var royal = PetView.royalName(sessionName: s.name, model: kind)
+            while used.contains(royal) && shift < 12 {
+                shift += 1
+                royal = PetView.royalName(sessionName: s.name, model: kind, numeralShift: shift)
+            }
+            used.insert(royal)
+            out[s.sessionId] = royal
+        }
+        royalNames = out
+    }
+
     func sync(_ sessions: [SessionInfo]) {
         lastSessions = sessions
         assignCapColors(sessions)
+        assignRoyalNames(sessions)
 
         // stadium wave when the last busy session finishes
         let busyCount = sessions.filter { $0.status == "busy" }.count
@@ -112,6 +133,9 @@ final class PetManager {
             }
             if let color = capColors[info.sessionId] {
                 pets[info.sessionId]?.setCap(color)
+            }
+            if let royal = royalNames[info.sessionId] {
+                pets[info.sessionId]?.setRoyal(royal)
             }
         }
         for (id, pet) in pets where !ids.contains(id) {
@@ -207,11 +231,18 @@ final class PetManager {
     // MARK: - Hook events
 
     func handle(_ event: HookEvent) {
-        // every hook event carries the session's effort level — keep the crab's wiredness fresh
-        if !event.sessionId.isEmpty,
-           let effortDict = event.payload["effort"] as? [String: Any],
-           let level = effortDict["level"] as? String {
-            pets[event.sessionId]?.setEffort(level)
+        // every hook event carries session context — keep the crab's look fresh
+        if !event.sessionId.isEmpty, let pet = pets[event.sessionId] {
+            if let effortDict = event.payload["effort"] as? [String: Any],
+               let level = effortDict["level"] as? String {
+                pet.setEffort(level)
+            }
+            if let mode = event.payload["permission_mode"] as? String {
+                pet.setPermissionMode(mode)
+            }
+            if let remote = event.payload["_remote"] as? Bool {
+                pet.setRemote(remote)
+            }
         }
         switch event.name {
         case "Stop":
@@ -236,6 +267,10 @@ final class PetManager {
             }
         case "StopFailure":
             pets[event.sessionId]?.showNote("⚠️")
+        case "PreCompact":
+            pets[event.sessionId]?.compactStart()
+        case "PostCompact":
+            pets[event.sessionId]?.compactEnd()
         default:
             break
         }

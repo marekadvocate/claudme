@@ -134,6 +134,46 @@ final class PetView: NSView {
         }
     }
 
+    // CC feature states: permission mode (glasses), remote (satellite), compaction
+    private var permissionMode: String?
+    private var accessoryLayer: CAShapeLayer?
+    private var satelliteLayer: CALayer?
+    private var compactUntil: CFTimeInterval = 0
+
+    // MARK: - Royal names (George Fable V)
+
+    private static let royalFirstNames = [
+        "George", "Henrich", "Ludovít", "Karol", "Maximilián", "Rudolf",
+        "Leopold", "Ferdinand", "Albrecht", "Václav", "Otakar", "Kazimír",
+        "Boleslav", "Vratislav", "Svätopluk", "Mojmír", "Rastislav", "Pribina",
+        "Žofia", "Mária", "Alžbeta", "Kunigunda", "Beatrix", "Hedviga",
+    ]
+    private static let romanNumerals = ["I", "II", "III", "IV", "V", "VI",
+                                        "VII", "VIII", "IX", "X", "XI", "XII"]
+
+    /// stable pompous identity: first name + numeral from the session-name hash,
+    /// surname = the model; numeralShift resolves collisions among live crabs
+    static func royalName(sessionName: String, model: ModelKind, numeralShift: Int = 0) -> String {
+        var hash: UInt64 = 1469598103934665603
+        for b in sessionName.utf8 { hash = (hash ^ UInt64(b)) &* 1099511628211 }
+        let first = royalFirstNames[Int(hash % UInt64(royalFirstNames.count))]
+        let idx = (Int((hash >> 8) % UInt64(romanNumerals.count)) + numeralShift) % romanNumerals.count
+        let surname = model == .unknown ? "Clawd" : model.rawValue.capitalized
+        return "\(first) \(surname) \(romanNumerals[idx])"
+    }
+
+    private var royalOverride: String?
+
+    var royalName: String {
+        royalOverride ?? Self.royalName(sessionName: info.name, model: modelKind)
+    }
+
+    func setRoyal(_ name: String) {
+        guard name != royalOverride else { return }
+        royalOverride = name
+        refreshPill()
+    }
+
     // MARK: - Init
 
     init(info: SessionInfo, roamArea: RoamArea) {
@@ -324,6 +364,117 @@ final class PetView: NSView {
         effortLevel = norm
         refreshPill()
         updateWired()
+    }
+
+    /// permission mode → eyewear: plan = scholar glasses, bypass = shades 😎
+    func setPermissionMode(_ mode: String) {
+        guard mode != permissionMode else { return }
+        permissionMode = mode
+        accessoryLayer?.removeFromSuperlayer()
+        accessoryLayer = nil
+
+        let left = Self.cellRect(col: 2, row: 3)
+        let right = Self.cellRect(col: 8, row: 3)
+        let layer = CAShapeLayer()
+        layer.contentsScale = NSScreen.main?.backingScaleFactor ?? 2
+
+        switch mode {
+        case "bypassPermissions":
+            // black shades: lenses + bridge + arms
+            let path = CGMutablePath()
+            path.addRoundedRect(in: left.insetBy(dx: -2, dy: -1.5), cornerWidth: 2, cornerHeight: 2)
+            path.addRoundedRect(in: right.insetBy(dx: -2, dy: -1.5), cornerWidth: 2, cornerHeight: 2)
+            path.addRect(CGRect(x: left.maxX, y: left.midY, width: right.minX - left.maxX, height: 2))
+            path.addRect(CGRect(x: left.minX - 6, y: left.midY, width: 5, height: 2))
+            path.addRect(CGRect(x: right.maxX + 1, y: right.midY, width: 5, height: 2))
+            layer.path = path
+            layer.fillColor = NSColor(white: 0.05, alpha: 1).cgColor
+        case "plan":
+            // round scholar glasses
+            let path = CGMutablePath()
+            path.addEllipse(in: left.insetBy(dx: -2.5, dy: -2.5))
+            path.addEllipse(in: right.insetBy(dx: -2.5, dy: -2.5))
+            path.move(to: CGPoint(x: left.maxX + 2.5, y: left.midY + 2))
+            path.addLine(to: CGPoint(x: right.minX - 2.5, y: right.midY + 2))
+            layer.path = path
+            layer.fillColor = nil
+            layer.strokeColor = Self.inkColor.cgColor
+            layer.lineWidth = 1.6
+        default:
+            return
+        }
+        body.addSublayer(layer)
+        accessoryLayer = layer
+    }
+
+    /// remote connection → a little satellite on an elliptical orbit 🛰️
+    func setRemote(_ on: Bool) {
+        if on, satelliteLayer == nil {
+            let squash = CALayer()
+            squash.bounds = CGRect(x: 0, y: 0, width: 80, height: 80)
+            squash.position = CGPoint(x: 40, y: 44)
+            squash.transform = CATransform3DMakeScale(1, 0.45, 1)
+
+            let spinner = CALayer()
+            spinner.bounds = squash.bounds
+            spinner.position = CGPoint(x: 40, y: 40)
+
+            let sat = CALayer()
+            sat.position = CGPoint(x: 92, y: 40)
+            let core = CALayer()
+            core.backgroundColor = NSColor(white: 0.78, alpha: 1).cgColor
+            core.bounds = CGRect(x: 0, y: 0, width: 6, height: 6)
+            core.cornerRadius = 1.5
+            core.position = .zero
+            let panelLeft = CALayer()
+            panelLeft.backgroundColor = NSColor(srgbRed: 0.2, green: 0.45, blue: 0.85, alpha: 1).cgColor
+            panelLeft.bounds = CGRect(x: 0, y: 0, width: 8, height: 3.4)
+            panelLeft.position = CGPoint(x: -8, y: 0)
+            let panelRight = CALayer()
+            panelRight.backgroundColor = panelLeft.backgroundColor
+            panelRight.bounds = panelLeft.bounds
+            panelRight.position = CGPoint(x: 8, y: 0)
+            sat.addSublayer(panelLeft)
+            sat.addSublayer(panelRight)
+            sat.addSublayer(core)
+            for l in [core, panelLeft, panelRight] { l.contentsScale = NSScreen.main?.backingScaleFactor ?? 2 }
+
+            spinner.addSublayer(sat)
+            squash.addSublayer(spinner)
+            body.addSublayer(squash)
+
+            let orbit = CABasicAnimation(keyPath: "transform.rotation.z")
+            orbit.byValue = -2 * CGFloat.pi
+            orbit.duration = 7
+            orbit.repeatCount = .infinity
+            spinner.add(orbit, forKey: "orbit")
+            satelliteLayer = squash
+        } else if !on, let s = satelliteLayer {
+            satelliteLayer = nil
+            s.removeFromSuperlayer()
+        }
+    }
+
+    // MARK: - Context compaction (the crab digests its context)
+
+    func compactStart() {
+        guard body.animation(forKey: "compacting") == nil else { return }
+        compactUntil = CACurrentMediaTime() + 120   // safety timeout
+        bubble.show("🗜️", for: nil)
+        let chew = CABasicAnimation(keyPath: "transform.scale.y")
+        chew.fromValue = 0.94
+        chew.toValue = 1.06
+        chew.duration = 0.4
+        chew.autoreverses = true
+        chew.repeatCount = .infinity
+        body.add(chew, forKey: "compacting")
+    }
+
+    func compactEnd() {
+        guard body.animation(forKey: "compacting") != nil else { return }
+        compactUntil = 0
+        body.removeAnimation(forKey: "compacting")
+        bubble.show("grg 😮‍💨", for: 2.2)
     }
 
     private func applyModelLook(animated: Bool) {
@@ -525,6 +676,7 @@ final class PetView: NSView {
     func tick(now: CFTimeInterval) {
         if perimT < 0 { placeOnPerimeter() }
         purgeExpiredBabies(now: now)
+        if compactUntil > 0 && now > compactUntil { compactEnd() }
 
         if state == .celebrating && now > celebrateUntil {
             applyState(mappedState(), animated: true)
@@ -1046,10 +1198,9 @@ final class PetView: NSView {
 
     // MARK: - Misc
 
-    /// pill: name · model · effort (effort only when it's worth bragging about)
+    /// pill: royal name (surname = model) · effort when it's worth bragging about
     private func refreshPill() {
-        var text = info.name
-        if modelKind != .unknown { text += " · \(modelKind.rawValue)" }
+        var text = royalName
         if let e = effortLevel, e == "xhigh" || e == "max" { text += " · \(e)" }
         namePill.stringValue = text
         namePill.sizeToFit()
@@ -1082,7 +1233,7 @@ final class PetView: NSView {
     override func rightMouseDown(with event: NSEvent) {
         let menu = NSMenu()
         menu.autoenablesItems = false
-        let title = NSMenuItem(title: "\(info.name) — \(info.status)", action: nil, keyEquivalent: "")
+        let title = NSMenuItem(title: "\(royalName)  (\(info.name) — \(info.status))", action: nil, keyEquivalent: "")
         title.isEnabled = false
         menu.addItem(title)
         if !info.cwd.isEmpty {

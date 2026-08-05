@@ -34,10 +34,10 @@ final class StatusItemController: NSObject, NSMenuDelegate {
             let title = NSMutableAttributedString(string: "● ", attributes: [
                 .foregroundColor: manager.capColors[s.sessionId] ?? PetView.capColor(for: s.name),
             ])
-            var line = "\(s.name) — \(s.status)"
             let kind = ModelKind.parse(s.model)
-            if kind != .unknown { line += " · \(kind.rawValue)" }
-            title.append(NSAttributedString(string: line))
+            let royal = manager.royalNames[s.sessionId]
+                ?? PetView.royalName(sessionName: s.name, model: kind)
+            title.append(NSAttributedString(string: "\(royal)  (\(s.name)) — \(s.status)"))
             item.attributedTitle = title
             item.isEnabled = false
             menu.addItem(item)

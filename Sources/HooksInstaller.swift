@@ -9,7 +9,7 @@ enum HooksInstallerError: Error, CustomStringConvertible {
 /// Recognizes its own entries by the "ClaudePet" marker in the command string.
 enum HooksInstaller {
     static let events = ["SessionStart", "UserPromptSubmit", "Stop", "Notification", "SessionEnd",
-                         "SubagentStart", "SubagentStop", "StopFailure"]
+                         "SubagentStart", "SubagentStop", "StopFailure", "PreCompact", "PostCompact"]
     static let marker = "ClaudePet"
 
     static var settingsURL: URL {
@@ -22,7 +22,7 @@ enum HooksInstaller {
     // Posts the hook's stdin JSON to the app; always exits 0 so it can never block Claude.
     // "$(" is literal in Swift strings (only "\(" interpolates).
     static var hookCommand: String {
-        "PF=\"$HOME/Library/Application Support/ClaudePet/port\"; curl -s -m 2 -H 'Expect:' --data-binary @- \"http://127.0.0.1:$(cat \"$PF\" 2>/dev/null || echo 48291)/hook\" >/dev/null 2>&1; exit 0"
+        "PF=\"$HOME/Library/Application Support/ClaudePet/port\"; curl -s -m 2 -H 'Expect:' -H \"X-CC-Remote: ${CLAUDE_CODE_REMOTE:-}\" -H \"X-CC-Bridge: ${CLAUDE_CODE_BRIDGE_SESSION_ID:-}\" --data-binary @- \"http://127.0.0.1:$(cat \"$PF\" 2>/dev/null || echo 48291)/hook\" >/dev/null 2>&1; exit 0"
     }
 
     static func isInstalled() -> Bool {
@@ -40,11 +40,19 @@ enum HooksInstaller {
         }
 
         var hooks = settings["hooks"] as? [String: Any] ?? [:]
+        // drop our old entries first (the command may have changed), then add fresh
+        for (event, value) in hooks {
+            guard var entries = value as? [[String: Any]] else { continue }
+            entries.removeAll { entryIsOurs($0) }
+            if entries.isEmpty {
+                hooks.removeValue(forKey: event)
+            } else {
+                hooks[event] = entries
+            }
+        }
         for event in events {
             var entries = hooks[event] as? [[String: Any]] ?? []
-            if !containsOurs(entries) {
-                entries.append(["hooks": [["type": "command", "command": hookCommand, "timeout": 5]]])
-            }
+            entries.append(["hooks": [["type": "command", "command": hookCommand, "timeout": 5]]])
             hooks[event] = entries
         }
         settings["hooks"] = hooks
