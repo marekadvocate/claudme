@@ -24,8 +24,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         hookServer = HookServer()
         hookServer.onSnapshot = { [weak self] in self?.manager.saveSnapshot() }
-        hookServer.onBeer = { [weak self] in self?.manager.testBeer() }
-        hookServer.onTrick = { [weak self] in self?.manager.testTrick() }
         hookServer.onEvent = { [weak self] event in
             self?.manager.handle(event)
             if event.name == "SessionStart" || event.name == "SessionEnd" {

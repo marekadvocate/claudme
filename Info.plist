@@ -3,13 +3,13 @@
 <plist version="1.0">
 <dict>
 	<key>CFBundleName</key>
-	<string>ClaudePet</string>
+	<string>Claudme</string>
 	<key>CFBundleDisplayName</key>
-	<string>ClaudePet</string>
+	<string>Claudme</string>
 	<key>CFBundleIdentifier</key>
-	<string>dev.marek.claudepet</string>
+	<string>dev.marek.claudme</string>
 	<key>CFBundleExecutable</key>
-	<string>ClaudePet</string>
+	<string>Claudme</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleVersion</key>

@@ -1,30 +1,78 @@
 import AppKit
 import QuartzCore
 
+/// One transparent, click-through overlay per display. Crabs are dealt out across
+/// the displays and crawl the perimeter of whichever one they belong to.
+private final class Overlay {
+    let window: NSWindow
+    var roamArea = RoamArea(minX: 0, maxX: 800, minY: 0, maxY: 600)
+    var view: NSView { window.contentView! }
+
+    init(screen: NSScreen) {
+        window = NSWindow(contentRect: screen.frame, styleMask: .borderless,
+                          backing: .buffered, defer: false)
+        window.isOpaque = false
+        window.backgroundColor = .clear
+        window.hasShadow = false
+        // one notch above the Dock so crabs walk in front of it, not behind its blur
+        window.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.dockWindow)) + 1)
+        window.ignoresMouseEvents = true    // click-through until a crab is hovered
+        window.collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle, .fullScreenAuxiliary]
+        window.isReleasedWhenClosed = false
+        window.contentView!.wantsLayer = true
+        window.orderFrontRegardless()
+    }
+
+    /// Returns true if the ring changed and pets need re-seating.
+    @discardableResult
+    func layout(for screen: NSScreen) -> Bool {
+        if window.frame != screen.frame {
+            window.setFrame(screen.frame, display: true)
+        }
+        // Always the physical display edges — the overlay sits above the Dock, so no
+        // need to dodge it, and this behaves identically in and out of fullscreen.
+        // Only the top is inset: the menu bar strip (and the notch inside it) would
+        // swallow anything drawn there. That inset equals a fullscreen window's top.
+        let topInset = max(screen.safeAreaInsets.top, screen.frame.maxY - screen.visibleFrame.maxY)
+        // offsets derived from the crab's body centre at (75,60), content half-extent ~21 px
+        let area = RoamArea(minX: -52,
+                            maxX: screen.frame.width - 98,
+                            minY: -37,
+                            maxY: screen.frame.height - topInset - 83)
+        guard area != roamArea else { return false }
+        roamArea = area
+        return true
+    }
+
+    func close() {
+        window.orderOut(nil)
+        window.close()
+    }
+}
+
 final class PetManager {
-    private var overlayWindow: NSWindow!
-    private var contentView: NSView { overlayWindow.contentView! }
+    private var overlays: [Overlay] = []
+    private var petOverlay: [String: Int] = [:]     // sessionId -> overlay index
     private(set) var pets: [String: PetView] = [:]
     private(set) var lastSessions: [SessionInfo] = []
-    private var roamArea = RoamArea(minX: 0, maxX: 800, minY: 0, maxY: 600)
     private var tickTimer: Timer?
 
     var onCountChanged: ((Int) -> Void)?
 
     func start() {
-        buildOverlay()
+        rebuildOverlays()
         NotificationCenter.default.addObserver(
             forName: NSApplication.didChangeScreenParametersNotification,
             object: nil, queue: .main
         ) { [weak self] _ in
-            self?.layoutOverlay()
+            self?.rebuildOverlays()
         }
-        // fullscreen apps live on their own Space — re-derive the floor when it changes
+        // fullscreen apps live on their own Space — re-derive the ring when it changes
         NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.activeSpaceDidChangeNotification,
             object: nil, queue: .main
         ) { [weak self] _ in
-            self?.layoutOverlay()
+            self?.layoutOverlays()
         }
         let t = Timer.scheduledTimer(withTimeInterval: 1.0 / 30.0, repeats: true) { [weak self] _ in
             self?.tick()
@@ -33,58 +81,55 @@ final class PetManager {
         tickTimer = t
     }
 
-    // MARK: - Overlay window
+    // MARK: - Overlays
 
-    private func buildOverlay() {
-        let screen = NSScreen.main ?? NSScreen.screens[0]
-        let w = NSWindow(contentRect: screen.frame, styleMask: .borderless, backing: .buffered, defer: false)
-        w.isOpaque = false
-        w.backgroundColor = .clear
-        w.hasShadow = false
-        // one notch above the Dock so crabs walk in front of it, not behind its blur
-        w.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.dockWindow)) + 1)
-        w.ignoresMouseEvents = true    // fully click-through, pets never steal input
-        w.collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle, .fullScreenAuxiliary]
-        w.isReleasedWhenClosed = false
-        w.contentView!.wantsLayer = true
-        overlayWindow = w
-        layoutOverlay()
-        w.orderFrontRegardless()
+    private func rebuildOverlays() {
+        let screens = NSScreen.screens
+        guard !screens.isEmpty else { return }
+
+        while overlays.count > screens.count { overlays.removeLast().close() }
+        while overlays.count < screens.count { overlays.append(Overlay(screen: screens[overlays.count])) }
+
+        for (i, screen) in screens.enumerated() {
+            overlays[i].layout(for: screen)
+        }
+        reseatAllPets()
     }
 
-    private func layoutOverlay() {
-        guard let screen = NSScreen.main ?? NSScreen.screens.first else { return }
-        if overlayWindow.frame != screen.frame {
-            overlayWindow.setFrame(screen.frame, display: true)
+    private func layoutOverlays() {
+        let screens = NSScreen.screens
+        guard screens.count == overlays.count else { rebuildOverlays(); return }
+        var changed = false
+        for (i, screen) in screens.enumerated() {
+            if overlays[i].layout(for: screen) { changed = true }
         }
-        // Always the physical display edges — the overlay sits above the Dock, so no
-        // need to dodge it, and this behaves identically in and out of fullscreen.
-        // Only the top is inset: the menu bar strip (and the notch inside it) would
-        // swallow anything drawn there. That inset equals a fullscreen window's top.
-        let topInset = max(screen.safeAreaInsets.top, screen.frame.maxY - screen.visibleFrame.maxY)
-        let visible = NSRect(x: screen.frame.minX,
-                             y: screen.frame.minY,
-                             width: screen.frame.width,
-                             height: screen.frame.height - topInset)
-        // perimeter ring the pets crawl on — legs touch the visible-frame edges
-        // (offsets derived from body center at (75,60), content half-extent ~21 px)
-        let area = RoamArea(
-            minX: visible.minX - screen.frame.minX - 52,
-            maxX: visible.maxX - screen.frame.minX - 98,
-            minY: visible.minY - screen.frame.minY - 37,
-            maxY: visible.maxY - screen.frame.minY - 83
-        )
-        guard area != roamArea else { return }
-        roamArea = area
-        for pet in pets.values {
-            pet.roamArea = roamArea   // pets re-derive their edge position next tick
+        if changed { reseatAllPets() }
+    }
+
+    /// Deal a session to a display — stable, so a crab keeps its screen across restarts.
+    private func overlayIndex(for sessionId: String) -> Int {
+        guard overlays.count > 1 else { return 0 }
+        return Int(Naming.hash(sessionId) % UInt64(overlays.count))
+    }
+
+    private func reseatAllPets() {
+        for (id, pet) in pets {
+            let idx = overlayIndex(for: id)
+            guard idx < overlays.count else { continue }
+            let overlay = overlays[idx]
+            if pet.superview !== overlay.view {
+                pet.removeFromSuperview()
+                overlay.view.addSubview(pet)
+                pet.resetPlacement()
+            }
+            petOverlay[id] = idx
+            pet.roamArea = overlay.roamArea   // pet re-derives its edge position next tick
         }
     }
 
+    // MARK: - Identity assignment
 
-    // MARK: - Registry sync
-
-    /// stable cap color per session name, with deterministic collision probing
+    /// stable cap colour per session name, with deterministic collision probing
     /// so all live crabs wear distinct caps
     private(set) var capColors: [String: NSColor] = [:]
 
@@ -104,33 +149,36 @@ final class PetManager {
         capColors = colors
     }
 
-    private var prevBusyCount = 0
-    private var lastWaveAt: CFTimeInterval = 0
+    /// unique made names among live crabs (given name shifts on collision)
+    private(set) var madeNames: [String: MadeName] = [:]
 
-    /// unique royal names among live crabs (numeral bumps on collision)
-    private(set) var royalNames: [String: String] = [:]
-
-    private func assignRoyalNames(_ sessions: [SessionInfo]) {
+    private func assignMadeNames(_ sessions: [SessionInfo]) {
         var used = Set<String>()
-        var out: [String: String] = [:]
+        var out: [String: MadeName] = [:]
         for s in sessions.sorted(by: { $0.name < $1.name }) {
             let kind = ModelKind.parse(s.model)
-            var shift = 0
-            var royal = PetView.royalName(sessionName: s.name, model: kind)
-            while used.contains(royal) && shift < 12 {
-                shift += 1
-                royal = PetView.royalName(sessionName: s.name, model: kind, numeralShift: shift)
+            var variant = 0
+            var name = Naming.name(sessionName: s.name, model: kind, ageSeconds: s.ageSeconds)
+            while used.contains(name.full) && variant < 10 {
+                variant += 1
+                name = Naming.name(sessionName: s.name, model: kind,
+                                   ageSeconds: s.ageSeconds, variant: variant)
             }
-            used.insert(royal)
-            out[s.sessionId] = royal
+            used.insert(name.full)
+            out[s.sessionId] = name
         }
-        royalNames = out
+        madeNames = out
     }
+
+    // MARK: - Registry sync
+
+    private var prevBusyCount = 0
+    private var lastWaveAt: CFTimeInterval = 0
 
     func sync(_ sessions: [SessionInfo]) {
         lastSessions = sessions
         assignCapColors(sessions)
-        assignRoyalNames(sessions)
+        assignMadeNames(sessions)
 
         // stadium wave when the last busy session finishes
         let busyCount = sessions.filter { $0.status == "busy" }.count
@@ -145,6 +193,7 @@ final class PetManager {
             }
         }
         prevBusyCount = busyCount
+
         let ids = Set(sessions.map { $0.sessionId })
         for info in sessions {
             if let pet = pets[info.sessionId] {
@@ -155,38 +204,28 @@ final class PetManager {
             if let color = capColors[info.sessionId] {
                 pets[info.sessionId]?.setCap(color)
             }
-            if let royal = royalNames[info.sessionId] {
-                pets[info.sessionId]?.setRoyal(royal)
+            if let made = madeNames[info.sessionId] {
+                pets[info.sessionId]?.setMadeName(made)
             }
         }
         for (id, pet) in pets where !ids.contains(id) {
             pets.removeValue(forKey: id)
+            petOverlay.removeValue(forKey: id)
             despawn(pet)
         }
         onCountChanged?(pets.count)
     }
 
     private func addPet(_ info: SessionInfo) {
-        let pet = PetView(info: info, roamArea: roamArea)   // places itself on the perimeter
+        let idx = overlayIndex(for: info.sessionId)
+        guard idx < overlays.count else { return }
+        let overlay = overlays[idx]
+        let pet = PetView(info: info, roamArea: overlay.roamArea)   // places itself on the perimeter
         pet.onConfetti = { [weak self] p in self?.confetti(over: p) }
         pet.onBeerStarted = { [weak self] p in self?.maybeClink(around: p) }
-        contentView.addSubview(pet)
+        overlay.view.addSubview(pet)
         pets[info.sessionId] = pet
-    }
-
-    /// a nearby crab joins the beer for a toast 🍻
-    private func maybeClink(around pet: PetView) {
-        for other in pets.values where other !== pet {
-            guard other.state == .idle || other.state == .working else { continue }
-            let dx = pet.frame.midX - other.frame.midX
-            let dy = pet.frame.midY - other.frame.midY
-            if dx * dx + dy * dy < 140 * 140 {
-                other.beerBreak(joining: true)
-                pet.showClink()
-                other.showClink()
-                break
-            }
-        }
+        petOverlay[info.sessionId] = idx
     }
 
     private func despawn(_ pet: PetView) {
@@ -199,6 +238,19 @@ final class PetManager {
         })
     }
 
+    /// crabs sharing a display, so distance comparisons are in one coordinate space
+    private func petsByOverlay() -> [Int: [PetView]] {
+        var out: [Int: [PetView]] = [:]
+        for (id, pet) in pets {
+            out[petOverlay[id] ?? 0, default: []].append(pet)
+        }
+        return out
+    }
+
+    // MARK: - Tick
+
+    private var tickCount = 0
+
     private func tick() {
         let now = CACurrentMediaTime()
         for pet in pets.values {
@@ -208,43 +260,55 @@ final class PetManager {
         tickCount += 1
         if tickCount % 45 == 0 { checkGreetings(now: now) }
         if tickCount % 20 == 0 { checkSeparation() }
-        if tickCount % 60 == 0 { layoutOverlay() }   // catch fullscreen/Dock changes
+        if tickCount % 60 == 0 { layoutOverlays() }   // catch Dock / resolution changes
     }
 
-    /// crabs shouldn't stack — too-close pairs get nudged apart
+    /// crabs shouldn't stack — too-close pairs on the same display get nudged apart
     private func checkSeparation() {
-        let list = Array(pets.values)
-        guard list.count > 1 else { return }
-        for i in 0..<list.count {
-            for j in (i + 1)..<list.count {
-                let a = list[i], b = list[j]
-                let dx = a.frame.midX - b.frame.midX
-                let dy = a.frame.midY - b.frame.midY
-                // wide enough that the royal-name pills stop overlapping too
-                if dx * dx + dy * dy < 105 * 105 {
-                    a.separate(from: b)
+        for (_, list) in petsByOverlay() where list.count > 1 {
+            for i in 0..<list.count {
+                for j in (i + 1)..<list.count {
+                    let a = list[i], b = list[j]
+                    let dx = a.frame.midX - b.frame.midX
+                    let dy = a.frame.midY - b.frame.midY
+                    // wide enough that the name pills stop overlapping too
+                    if dx * dx + dy * dy < 105 * 105 {
+                        a.separate(from: b)
+                    }
                 }
             }
         }
     }
 
-    /// The overlay is click-through except when the cursor is over a crab's body —
-    /// then it accepts the click (PetView.mouseDown focuses that session's terminal).
+    // MARK: - Mouse
+
+    /// Overlays stay click-through except when the cursor is over a crab's body —
+    /// then that one accepts the click (PetView.mouseDown shows the session's terminal).
     private var lastHoveredId: String?
 
     private func updateMouseInteractivity() {
         let mouse = NSEvent.mouseLocation
-        let local = NSPoint(x: mouse.x - overlayWindow.frame.origin.x,
-                            y: mouse.y - overlayWindow.frame.origin.y)
         var hoveredPet: PetView?
-        for pet in pets.values {
-            let r = pet.bodyHitRect.offsetBy(dx: pet.frame.origin.x, dy: pet.frame.origin.y)
-            if r.contains(local) { hoveredPet = pet; break }
+        var hoveredOverlay = -1
+
+        for (idx, overlay) in overlays.enumerated() {
+            let f = overlay.window.frame
+            guard f.contains(mouse) else { continue }
+            let local = NSPoint(x: mouse.x - f.origin.x, y: mouse.y - f.origin.y)
+            for pet in overlay.view.subviews.compactMap({ $0 as? PetView }) {
+                let r = pet.bodyHitRect.offsetBy(dx: pet.frame.origin.x, dy: pet.frame.origin.y)
+                if r.contains(local) { hoveredPet = pet; hoveredOverlay = idx; break }
+            }
+            if hoveredPet != nil { break }
         }
-        let hover = hoveredPet != nil
-        if overlayWindow.ignoresMouseEvents == hover {
-            overlayWindow.ignoresMouseEvents = !hover
+
+        for (idx, overlay) in overlays.enumerated() {
+            let shouldAccept = (idx == hoveredOverlay)
+            if overlay.window.ignoresMouseEvents == shouldAccept {
+                overlay.window.ignoresMouseEvents = !shouldAccept
+            }
         }
+
         if let pet = hoveredPet, pet.sessionId != lastHoveredId {
             pet.hoverPoke()   // startled little jump when the cursor arrives
         }
@@ -274,12 +338,12 @@ final class PetManager {
             pets[event.sessionId]?.workingPulse()
         case "SessionEnd":
             if let pet = pets.removeValue(forKey: event.sessionId) {
+                petOverlay.removeValue(forKey: event.sessionId)
                 despawn(pet)
                 onCountChanged?(pets.count)
             }
         case "Notification":
-            let msg = (event.payload["message"] as? String) ?? "needs you!"
-            pets[event.sessionId]?.showNote(String(msg.prefix(38)))
+            pets[event.sessionId]?.showNote(Quips.random(.waiting))
         case "SubagentStart":
             if let agentId = event.payload["agent_id"] as? String {
                 pets[event.sessionId]?.addBaby(agentId: agentId)
@@ -289,7 +353,7 @@ final class PetManager {
                 pets[event.sessionId]?.removeBaby(agentId: agentId)
             }
         case "StopFailure":
-            pets[event.sessionId]?.showNote("⚠️")
+            pets[event.sessionId]?.showNote(Quips.random(.trouble))
         case "PreCompact":
             pets[event.sessionId]?.compactStart()
         case "PostCompact":
@@ -299,73 +363,54 @@ final class PetManager {
         }
     }
 
-    // MARK: - Crab greetings (ambient: nearby crabs wave at each other)
+    // MARK: - Ambient social behaviour
 
     private var greetCooldown: [String: CFTimeInterval] = [:]
-    private var tickCount = 0
 
     private func checkGreetings(now: CFTimeInterval) {
-        let list = Array(pets.values)
-        guard list.count > 1 else { return }
-        for i in 0..<list.count {
-            for j in (i + 1)..<list.count {
-                let a = list[i], b = list[j]
-                guard a.state == .idle || a.state == .working,
-                      b.state == .idle || b.state == .working else { continue }
-                let dx = a.frame.midX - b.frame.midX
-                let dy = a.frame.midY - b.frame.midY
-                guard dx * dx + dy * dy < 80 * 80 else { continue }
-                let key = a.sessionId < b.sessionId ? a.sessionId + b.sessionId
-                                                    : b.sessionId + a.sessionId
-                if now - (greetCooldown[key] ?? 0) > 90 {
-                    greetCooldown[key] = now
-                    a.showNote("👋")
-                    b.showNote("👋")
+        for (_, list) in petsByOverlay() where list.count > 1 {
+            for i in 0..<list.count {
+                for j in (i + 1)..<list.count {
+                    let a = list[i], b = list[j]
+                    guard a.state == .idle || a.state == .working,
+                          b.state == .idle || b.state == .working else { continue }
+                    let dx = a.frame.midX - b.frame.midX
+                    let dy = a.frame.midY - b.frame.midY
+                    guard dx * dx + dy * dy < 80 * 80 else { continue }
+                    let key = a.sessionId < b.sessionId ? a.sessionId + b.sessionId
+                                                        : b.sessionId + a.sessionId
+                    if now - (greetCooldown[key] ?? 0) > 90 {
+                        greetCooldown[key] = now
+                        let line = Quips.random(.greeting)
+                        a.showNote(line)
+                        b.showNote(line)
+                    }
                 }
             }
         }
     }
 
-    func testCelebrate() {
-        pets.values.randomElement()?.celebrate()
-    }
-
-    func testBeer() {
-        pets.values.randomElement()?.beerBreak()
-    }
-
-    func testTrick() {
-        pets.values.randomElement()?.doTrick(forced: 1)   // balloon
-    }
-
-    /// Debug: renders the overlay's layer tree to App Support/ClaudePet/snapshot.png.
-    /// Needs no screen-recording permission (we only render our own layers).
-    func saveSnapshot() {
-        guard let view = overlayWindow.contentView, let rootLayer = view.layer else { return }
-        let w = Int(view.bounds.width), h = Int(view.bounds.height)
-        guard w > 0, h > 0,
-              let rep = NSBitmapImageRep(
-                bitmapDataPlanes: nil, pixelsWide: w, pixelsHigh: h,
-                bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
-                colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0),
-              let gctx = NSGraphicsContext(bitmapImageRep: rep)
-        else { return }
-        NSGraphicsContext.saveGraphicsState()
-        NSGraphicsContext.current = gctx
-        rootLayer.render(in: gctx.cgContext)
-        NSGraphicsContext.restoreGraphicsState()
-        let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("ClaudePet", isDirectory: true)
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        if let png = rep.representation(using: .png, properties: [:]) {
-            try? png.write(to: dir.appendingPathComponent("snapshot.png"))
+    /// a nearby crab on the same display joins the beer for a toast 🍻
+    private func maybeClink(around pet: PetView) {
+        let idx = petOverlay[pet.sessionId] ?? 0
+        for (other, otherIdx) in pets.values.map({ ($0, petOverlay[$0.sessionId] ?? 0) })
+        where other !== pet && otherIdx == idx {
+            guard other.state == .idle || other.state == .working else { continue }
+            let dx = pet.frame.midX - other.frame.midX
+            let dy = pet.frame.midY - other.frame.midY
+            if dx * dx + dy * dy < 140 * 140 {
+                other.beerBreak(joining: true)
+                pet.showClink()
+                other.showClink()
+                break
+            }
         }
     }
 
     // MARK: - Confetti
 
     private func confetti(over pet: PetView) {
-        guard let layer = contentView.layer else { return }
+        guard let layer = pet.superview?.layer else { return }
         let emitter = CAEmitterLayer()
         emitter.emitterPosition = CGPoint(x: pet.frame.midX, y: pet.frame.minY + 70)
         emitter.emitterShape = .point
@@ -403,5 +448,44 @@ final class PetManager {
         ctx.setFillColor((color.usingColorSpace(.sRGB) ?? color).cgColor)
         ctx.fill(CGRect(x: 1, y: 1, width: size - 2, height: size - 2))
         return ctx.makeImage()
+    }
+
+    // MARK: - Debug (only reachable with CLAUDME_DEBUG=1)
+
+    /// Renders every overlay's layer tree into one PNG, stacked vertically.
+    /// Needs no screen-recording permission — we only draw our own layers.
+    func saveSnapshot() {
+        let views = overlays.map { $0.view }
+        guard !views.isEmpty else { return }
+        let width = Int(views.map { $0.bounds.width }.max() ?? 0)
+        let height = Int(views.reduce(0) { $0 + $1.bounds.height })
+        guard width > 0, height > 0,
+              let rep = NSBitmapImageRep(
+                bitmapDataPlanes: nil, pixelsWide: width, pixelsHigh: height,
+                bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+                colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0),
+              let gctx = NSGraphicsContext(bitmapImageRep: rep)
+        else { return }
+
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = gctx
+        var y: CGFloat = 0
+        for view in views {
+            if let root = view.layer {
+                gctx.cgContext.saveGState()
+                gctx.cgContext.translateBy(x: 0, y: y)
+                root.render(in: gctx.cgContext)
+                gctx.cgContext.restoreGState()
+            }
+            y += view.bounds.height
+        }
+        NSGraphicsContext.restoreGraphicsState()
+
+        let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("Claudme", isDirectory: true)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        if let png = rep.representation(using: .png, properties: [:]) {
+            try? png.write(to: dir.appendingPathComponent("snapshot.png"))
+        }
     }
 }

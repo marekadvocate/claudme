@@ -5,30 +5,32 @@ enum HooksInstallerError: Error, CustomStringConvertible {
     var description: String { "~/.claude/settings.json is not valid JSON — refusing to touch it" }
 }
 
-/// Merges/removes ClaudePet command hooks in ~/.claude/settings.json.
-/// Recognizes its own entries by the "ClaudePet" marker in the command string.
+/// Merges/removes Claudme command hooks in ~/.claude/settings.json.
+/// Recognizes its own entries by the "Claudme" marker in the command string.
 enum HooksInstaller {
     static let events = ["SessionStart", "UserPromptSubmit", "Stop", "Notification", "SessionEnd",
                          "SubagentStart", "SubagentStop", "StopFailure", "PreCompact", "PostCompact"]
-    static let marker = "ClaudePet"
+    static let marker = "Claudme"
+    /// pre-rename marker, still recognised so an upgrade cleans up after itself
+    static let legacyMarker = "ClaudePet"
 
     static var settingsURL: URL {
         FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".claude/settings.json")
     }
     static var backupURL: URL {
-        FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".claude/settings.json.bak-claudepet")
+        FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".claude/settings.json.bak-claudme")
     }
 
     // Posts the hook's stdin JSON to the app; always exits 0 so it can never block Claude.
     // "$(" is literal in Swift strings (only "\(" interpolates).
     static var hookCommand: String {
-        "PF=\"$HOME/Library/Application Support/ClaudePet/port\"; curl -s -m 2 -H 'Expect:' -H \"X-CC-Remote: ${CLAUDE_CODE_REMOTE:-}\" -H \"X-CC-Bridge: ${CLAUDE_CODE_BRIDGE_SESSION_ID:-}\" --data-binary @- \"http://127.0.0.1:$(cat \"$PF\" 2>/dev/null || echo 48291)/hook\" >/dev/null 2>&1; exit 0"
+        "PF=\"$HOME/Library/Application Support/Claudme/port\"; curl -s -m 2 -H 'Expect:' -H \"X-CC-Remote: ${CLAUDE_CODE_REMOTE:-}\" -H \"X-CC-Bridge: ${CLAUDE_CODE_BRIDGE_SESSION_ID:-}\" --data-binary @- \"http://127.0.0.1:$(cat \"$PF\" 2>/dev/null || echo 48291)/hook\" >/dev/null 2>&1; exit 0"
     }
 
     static func isInstalled() -> Bool {
         guard let data = try? Data(contentsOf: settingsURL),
               let text = String(data: data, encoding: .utf8) else { return false }
-        return text.contains("Application Support/ClaudePet")
+        return text.contains("Application Support/Claudme")
     }
 
     static func install() throws {
@@ -81,7 +83,8 @@ enum HooksInstaller {
 
     private static func entryIsOurs(_ entry: [String: Any]) -> Bool {
         ((entry["hooks"] as? [[String: Any]]) ?? []).contains { h in
-            (h["command"] as? String ?? "").contains(marker)
+            let cmd = h["command"] as? String ?? ""
+            return cmd.contains(marker) || cmd.contains(legacyMarker)
         }
     }
 

@@ -8,14 +8,21 @@ struct SessionInfo: Equatable {
     let status: String        // observed: idle | busy | waiting (defensive: anything)
     let updatedAt: Double     // ms since epoch
     let statusUpdatedAt: Double
+    let startedAt: Double     // ms since epoch — drives the crab's rank
     let model: String?        // e.g. claude-fable-5, read from the transcript tail
+
+    /// how long this session has been alive, in seconds
+    var ageSeconds: Double {
+        guard startedAt > 0 else { return 0 }
+        return max(0, Date().timeIntervalSince1970 - startedAt / 1000)
+    }
 }
 
 /// Polls Claude Code's own per-session registry: ~/.claude/sessions/<pid>.json
 final class SessionRegistry {
     var onChange: (([SessionInfo]) -> Void)?   // delivered on main thread
 
-    private let queue = DispatchQueue(label: "claudepet.registry", qos: .utility)
+    private let queue = DispatchQueue(label: "claudme.registry", qos: .utility)
     private var timer: DispatchSourceTimer?
     private var last: [SessionInfo]?
 
@@ -76,6 +83,7 @@ final class SessionRegistry {
             status: ((obj["status"] as? String) ?? "idle").lowercased(),
             updatedAt: (obj["updatedAt"] as? NSNumber)?.doubleValue ?? 0,
             statusUpdatedAt: (obj["statusUpdatedAt"] as? NSNumber)?.doubleValue ?? 0,
+            startedAt: (obj["startedAt"] as? NSNumber)?.doubleValue ?? 0,
             model: transcriptModel(cwd: cwd, sessionId: sessionId)
         )
     }

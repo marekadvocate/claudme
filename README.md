@@ -1,4 +1,4 @@
-# ClaudePet (tamagotchi)
+# Claudme (tamagotchi)
 
 One desktop pet per running Claude Code session. Little Claude sparks float and roam your
 whole screen — the spark spins faster while Claude works (like the TUI spinner), they hop
@@ -12,7 +12,7 @@ pets never steal your clicks.
 
 ```bash
 ./build.sh
-open build/ClaudePet.app
+open build/Claudme.app
 ```
 
 A `✳ N` item appears in the menubar (N = live sessions). Pets appear at the bottom
@@ -24,14 +24,14 @@ The registry alone gives pets + idle/busy/waiting states (1 s lag). For instant
 celebrations + confetti on turn completion, install the hooks:
 
 ```bash
-build/ClaudePet.app/Contents/MacOS/ClaudePet --install-hooks
+build/Claudme.app/Contents/MacOS/Claudme --install-hooks
 ```
 
 or use the menubar menu → *Install Claude Code hooks*.
 
 This merges `command` hooks (a 1-line `curl` to `127.0.0.1:48291`, loopback only) into
 `~/.claude/settings.json` for: `SessionStart`, `UserPromptSubmit`, `Stop`, `Notification`,
-`SessionEnd`. A backup is written to `~/.claude/settings.json.bak-claudepet` first.
+`SessionEnd`. A backup is written to `~/.claude/settings.json.bak-claudme` first.
 Already-running sessions pick hooks up after a restart; new sessions get them immediately.
 
 Uninstall: `… --remove-hooks` (or the menu item). Then quit the app and delete the folder.

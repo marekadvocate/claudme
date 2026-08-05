@@ -18,6 +18,17 @@ enum ModelKind: String {
         return .unknown
     }
 
+    /// the family a crab belongs to — the model it runs on
+    var familyName: String {
+        switch self {
+        case .fable: return "Fable"
+        case .opus: return "Opus"
+        case .sonnet: return "Sonnet"
+        case .haiku: return "Haiku"
+        case .unknown: return "Ombra"
+        }
+    }
+
     /// bigger model → bigger crab
     var sizeFactor: CGFloat {
         switch self {
@@ -109,7 +120,6 @@ final class PetView: NSView {
     private var nextTrickAt: CFTimeInterval = CACurrentMediaTime() + Double.random(in: 300...900)
     private var nextMumbleAt: CFTimeInterval = CACurrentMediaTime() + Double.random(in: 180...480)
     private var lastPokeAt: CFTimeInterval = 0
-    private static let mumbles = ["🦀", "hmm…", "☕", "šup šup", "42", "vibe"]
 
     // model + effort ("how wired is this crab")
     private var modelKind: ModelKind = .unknown
@@ -126,11 +136,12 @@ final class PetView: NSView {
         }
     }
 
-    private var mumblePool: [String] {
+    /// wired crabs mumble in symbols, calm ones in their mother tongue
+    private func mumble() -> String {
         switch wiredness() {
-        case 3: return ["🚀", "!!!", "brrr", "MAX"]
-        case 2: return ["🔥", "⚡️", "hmm!"]
-        default: return Self.mumbles
+        case 3: return ["🚀", "!!!", "brrr", "MAX"].randomElement()!
+        case 2: return ["🔥", "⚡️", "hmm!"].randomElement()!
+        default: return Quips.random(.idle)
         }
     }
 
@@ -140,39 +151,22 @@ final class PetView: NSView {
     private var satelliteLayer: CALayer?
     private var compactUntil: CFTimeInterval = 0
 
-    // MARK: - Royal names (George Fable V)
+    // MARK: - Made name ("Don Vito Opus")
 
-    private static let royalFirstNames = [
-        "George", "Henrich", "Ludovít", "Karol", "Maximilián", "Rudolf",
-        "Leopold", "Ferdinand", "Albrecht", "Václav", "Otakar", "Kazimír",
-        "Boleslav", "Vratislav", "Svätopluk", "Mojmír", "Rastislav", "Pribina",
-        "Žofia", "Mária", "Alžbeta", "Kunigunda", "Beatrix", "Hedviga",
-    ]
-    private static let romanNumerals = ["I", "II", "III", "IV", "V", "VI",
-                                        "VII", "VIII", "IX", "X", "XI", "XII"]
+    private var made: MadeName?
 
-    /// stable pompous identity: first name + numeral from the session-name hash,
-    /// surname = the model; numeralShift resolves collisions among live crabs
-    static func royalName(sessionName: String, model: ModelKind, numeralShift: Int = 0) -> String {
-        var hash: UInt64 = 1469598103934665603
-        for b in sessionName.utf8 { hash = (hash ^ UInt64(b)) &* 1099511628211 }
-        let first = royalFirstNames[Int(hash % UInt64(royalFirstNames.count))]
-        let idx = (Int((hash >> 8) % UInt64(romanNumerals.count)) + numeralShift) % romanNumerals.count
-        let surname = model == .unknown ? "Clawd" : model.rawValue.capitalized
-        return "\(first) \(surname) \(romanNumerals[idx])"
-    }
-
-    private var royalOverride: String?
-
-    var royalName: String {
-        royalOverride ?? Self.royalName(sessionName: info.name, model: modelKind)
-    }
-
-    func setRoyal(_ name: String) {
-        guard name != royalOverride else { return }
-        royalOverride = name
+    /// The manager assigns these so no two living crabs share a name.
+    func setMadeName(_ name: MadeName) {
+        guard name.full != made?.full else { return }
+        made = name
         refreshPill()
     }
+
+    var madeName: MadeName {
+        made ?? Naming.name(sessionName: info.name, model: modelKind, ageSeconds: info.ageSeconds)
+    }
+
+    var era: Era { madeName.era }
 
     // MARK: - Init
 
@@ -270,14 +264,13 @@ final class PetView: NSView {
         return c
     }()
 
-    /// baseball cap: crown on top of the head + visor sticking out to the right
+    /// fedora: narrow crown with a pinch, over a wide flat brim
     /// (negative rows extend above the TUI art's grid)
     private static let capCells: [(Int, Int)] = {
         var c: [(Int, Int)] = []
-        for x in 3...7 { c.append((x, -2)) }     // crown top
-        for x in 2...8 { c.append((x, -1)) }     // crown base
-        c.append((9, -1))                        // visor
-        c.append((10, -1))
+        c.append((4, -3)); c.append((6, -3))     // pinched crown top
+        for x in 3...7 { c.append((x, -2)) }     // crown
+        for x in 1...9 { c.append((x, -1)) }     // brim, both sides
         return c
     }()
 
@@ -460,7 +453,7 @@ final class PetView: NSView {
     func compactStart() {
         guard body.animation(forKey: "compacting") == nil else { return }
         compactUntil = CACurrentMediaTime() + 120   // safety timeout
-        bubble.show("🗜️", for: nil)
+        bubble.show(Quips.random(.compacting), for: nil)
         let chew = CABasicAnimation(keyPath: "transform.scale.y")
         chew.fromValue = 0.94
         chew.toValue = 1.06
@@ -474,7 +467,7 @@ final class PetView: NSView {
         guard body.animation(forKey: "compacting") != nil else { return }
         compactUntil = 0
         body.removeAnimation(forKey: "compacting")
-        bubble.show("grg 😮‍💨", for: 2.2)
+        bubble.show(Quips.random(.compacted), for: 2.6)
     }
 
     private func applyModelLook(animated: Bool) {
@@ -580,7 +573,7 @@ final class PetView: NSView {
         hookWorkingUntil = 0
         applyState(.celebrating, animated: true)
         celebrateUntil = CACurrentMediaTime() + 3.2
-        bubble.show("✓", for: 3.0)
+        bubble.show(Quips.random(.done), for: 3.0)
         let hop = CAKeyframeAnimation(keyPath: "transform.translation.y")
         hop.values = [0, 30, 0, 20, 0]
         hop.keyTimes = [0, 0.28, 0.55, 0.78, 1]
@@ -617,11 +610,11 @@ final class PetView: NSView {
         switch new {
         case .waiting:
             slideRemaining = 0
-            bubble.show("!", for: nil)
+            bubble.show(Quips.random(.waiting), for: nil)
             nextHopAt = CACurrentMediaTime() + 0.4
         case .sleeping:
             slideRemaining = 0      // tick crawls us down to the bottom edge
-            bubble.show("z Z", for: nil)
+            bubble.show(Quips.random(.sleeping), for: nil)
         case .working:
             nextChatterAt = CACurrentMediaTime() + Double.random(in: 8...20)
         default:
@@ -717,11 +710,11 @@ final class PetView: NSView {
             }
             if state == .working && now >= nextChatterAt {
                 nextChatterAt = now + Double.random(in: 12...25)
-                bubble.show("…", for: 2.2)
+                bubble.show(Quips.random(.working), for: 2.2)
             }
             if state == .idle && now >= nextMumbleAt {
                 nextMumbleAt = now + Double.random(in: 180...480)
-                bubble.show(mumblePool.randomElement()!, for: 2.4)
+                bubble.show(mumble(), for: 2.4)
             }
         }
     }
@@ -744,7 +737,7 @@ final class PetView: NSView {
 
     /// beer buddy toast
     func showClink() {
-        bubble.show("🍻", for: 2.2)
+        bubble.show(Quips.random(.toast), for: 2.6)
     }
 
     var perimeterPosition: CGFloat { perimT }
@@ -889,7 +882,7 @@ final class PetView: NSView {
                 mug.add(out, forKey: "out")
                 CATransaction.commit()
             }
-            self.bubble.show("ahh~", for: 1.8)
+            self.bubble.show(Quips.random(.beer), for: 1.8)
         }
     }
 
@@ -1004,6 +997,13 @@ final class PetView: NSView {
         return min(max(frame.origin.x - roamArea.minX, 0), w)
     }
 
+    /// Forget the current edge position — the next tick re-seats the crab on its ring.
+    /// Used when a crab is moved to a different display.
+    func resetPlacement() {
+        perimT = -1
+        currentSegment = -1
+    }
+
     private func placeOnPerimeter() {
         guard roamArea.maxX > roamArea.minX, roamArea.maxY > roamArea.minY else { return }
         perimT = CGFloat.random(in: 0..<perimeterLength)
@@ -1014,6 +1014,7 @@ final class PetView: NSView {
         let (p, seg) = Self.positionAndSegment(for: perimT, in: roamArea)
         if abs(p.x - frame.origin.x) > 0.4 || abs(p.y - frame.origin.y) > 0.4 {
             setFrameOrigin(p)
+            positionPill()   // the clamp depends on where we are on screen
         }
         if seg != currentSegment {
             let firstTime = currentSegment < 0
@@ -1042,10 +1043,16 @@ final class PetView: NSView {
         }
     }
 
+    /// Keeps the label on screen, not merely inside the crab's own box — at the side
+    /// walls the pet frame hangs off the display, so clamping locally isn't enough.
     private func positionPill() {
         let w = namePill.frame.width
         var x = pillCenterX - w / 2
-        x = min(max(x, 0), bounds.width - w)
+        if let sv = superview, sv.bounds.width > w + 8 {
+            let lowest = -frame.origin.x + 4
+            let highest = sv.bounds.width - frame.origin.x - w - 4
+            x = min(max(x, lowest), highest)
+        }
         namePill.setFrameOrigin(NSPoint(x: x, y: pillBaseY))
     }
 
@@ -1203,17 +1210,15 @@ final class PetView: NSView {
 
     // MARK: - Misc
 
-    /// pill: royal name (surname = model) · effort when it's worth bragging about
+    /// pill: made name (rank + given + family) · effort when it's worth bragging about
     private func refreshPill() {
-        var text = royalName
+        var text = madeName.full
         if let e = effortLevel, e == "xhigh" || e == "max" { text += " · \(e)" }
         namePill.stringValue = text
         namePill.sizeToFit()
-        let w = namePill.frame.width + 12
-        let h = namePill.frame.height + 3
-        var x = pillCenterX - w / 2
-        x = min(max(x, 0), bounds.width - w)   // keep long pills inside the view
-        namePill.frame = NSRect(x: x, y: pillBaseY, width: w, height: h)
+        namePill.setFrameSize(NSSize(width: namePill.frame.width + 12,
+                                     height: namePill.frame.height + 3))
+        positionPill()
     }
 
     // MARK: - Click interaction: jump to the session's terminal
@@ -1238,7 +1243,7 @@ final class PetView: NSView {
     override func rightMouseDown(with event: NSEvent) {
         let menu = NSMenu()
         menu.autoenablesItems = false
-        let title = NSMenuItem(title: "\(royalName)  (\(info.name) — \(info.status))", action: nil, keyEquivalent: "")
+        let title = NSMenuItem(title: "\(madeName.full)  (\(info.name) — \(info.status))", action: nil, keyEquivalent: "")
         title.isEnabled = false
         menu.addItem(title)
         if !info.cwd.isEmpty {

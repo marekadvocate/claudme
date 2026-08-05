@@ -9,79 +9,129 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         self.manager = manager
         self.item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         super.init()
-        item.button?.title = "✳ 0"
+        setTitle(0)
         menu.delegate = self
         item.menu = menu
-        manager.onCountChanged = { [weak self] n in
-            self?.item.button?.title = "✳ \(n)"
-        }
+        manager.onCountChanged = { [weak self] n in self?.setTitle(n) }
     }
 
     func refresh(_ sessions: [SessionInfo]) {
-        item.button?.title = "✳ \(sessions.count)"
+        setTitle(sessions.count)
     }
+
+    private func setTitle(_ count: Int) {
+        item.button?.title = "🦀 \(count)"
+    }
+
+    // MARK: - Menu
 
     func menuNeedsUpdate(_ menu: NSMenu) {
         menu.removeAllItems()
-
         let sessions = manager.lastSessions
-        if sessions.isEmpty {
-            menu.addItem(withTitle: "No Claude sessions", action: nil, keyEquivalent: "")
-        }
-        for s in sessions {
-            let item = NSMenuItem(title: "", action: nil, keyEquivalent: "")
-            // cap-colored dot = the same identity color the crab wears
-            let title = NSMutableAttributedString(string: "● ", attributes: [
-                .foregroundColor: manager.capColors[s.sessionId] ?? PetView.capColor(for: s.name),
-            ])
-            let kind = ModelKind.parse(s.model)
-            let royal = manager.royalNames[s.sessionId]
-                ?? PetView.royalName(sessionName: s.name, model: kind)
-            title.append(NSAttributedString(string: "\(royal)  (\(s.name)) — \(s.status)"))
-            item.attributedTitle = title
-            item.isEnabled = false
-            menu.addItem(item)
+
+        menu.addItem(header(sessions.isEmpty
+            ? "No sessions in the family"
+            : "The family — \(sessions.count) made \(sessions.count == 1 ? "man" : "men")"))
+
+        for s in sessions.sorted(by: { $0.ageSeconds > $1.ageSeconds }) {
+            menu.addItem(sessionRow(s))
         }
 
         menu.addItem(.separator())
 
+        // Language submenu
+        let lang = NSMenuItem(title: "Language", action: nil, keyEquivalent: "")
+        let langMenu = NSMenu()
+        for l in Lang.allCases {
+            let li = NSMenuItem(title: l.displayName, action: #selector(pickLanguage(_:)), keyEquivalent: "")
+            li.target = self
+            li.representedObject = l.rawValue
+            li.state = (Quips.language == l) ? .on : .off
+            langMenu.addItem(li)
+        }
+        lang.submenu = langMenu
+        menu.addItem(lang)
+
+        // Hooks
         let installed = HooksInstaller.isInstalled()
-        let hookItem = NSMenuItem(
-            title: installed ? "Remove Claude Code hooks" : "Install Claude Code hooks (live reactions)",
-            action: installed ? #selector(removeHooks) : #selector(installHooks),
-            keyEquivalent: ""
-        )
-        hookItem.target = self
-        menu.addItem(hookItem)
-
-        let test = NSMenuItem(title: "Test celebration 🎉", action: #selector(testCelebrate), keyEquivalent: "")
-        test.target = self
-        menu.addItem(test)
-
-        let beer = NSMenuItem(title: "Beer break 🍺", action: #selector(beerBreak), keyEquivalent: "")
-        beer.target = self
-        menu.addItem(beer)
-
-        let trick = NSMenuItem(title: "Balloon ride 🎈", action: #selector(balloonRide), keyEquivalent: "")
-        trick.target = self
-        menu.addItem(trick)
+        let hooks = NSMenuItem(title: "Live reactions",
+                               action: installed ? #selector(removeHooks) : #selector(installHooks),
+                               keyEquivalent: "")
+        hooks.target = self
+        hooks.state = installed ? .on : .off
+        hooks.toolTip = installed
+            ? "Claude Code hooks are installed — click to remove them"
+            : "Install Claude Code hooks so crabs react the instant a turn ends"
+        menu.addItem(hooks)
 
         menu.addItem(.separator())
-        menu.addItem(NSMenuItem(title: "Quit ClaudePet", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
+        let quit = NSMenuItem(title: "Quit Claudme", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        menu.addItem(quit)
+    }
+
+    /// dimmed small-caps section title
+    private func header(_ text: String) -> NSMenuItem {
+        let i = NSMenuItem(title: "", action: nil, keyEquivalent: "")
+        i.attributedTitle = NSAttributedString(string: text, attributes: [
+            .font: NSFont.systemFont(ofSize: 11, weight: .semibold),
+            .foregroundColor: NSColor.secondaryLabelColor,
+        ])
+        i.isEnabled = false
+        return i
+    }
+
+    /// "● Don Vito Opus            working"  — dot in the crab's own colour
+    private func sessionRow(_ s: SessionInfo) -> NSMenuItem {
+        let i = NSMenuItem(title: "", action: #selector(focusSession(_:)), keyEquivalent: "")
+        i.target = self
+        i.representedObject = s.pid
+
+        let made = manager.madeNames[s.sessionId]
+            ?? Naming.name(sessionName: s.name, model: ModelKind.parse(s.model), ageSeconds: s.ageSeconds)
+        let colour = manager.capColors[s.sessionId] ?? PetView.capColor(for: s.name)
+
+        let line = NSMutableAttributedString(string: "● ", attributes: [.foregroundColor: colour])
+        line.append(NSAttributedString(string: made.full, attributes: [
+            .font: NSFont.systemFont(ofSize: 13, weight: .medium),
+        ]))
+        line.append(NSAttributedString(string: "   \(statusGlyph(s.status)) \(s.status)", attributes: [
+            .font: NSFont.systemFont(ofSize: 11),
+            .foregroundColor: NSColor.secondaryLabelColor,
+        ]))
+        i.attributedTitle = line
+        i.toolTip = "\(s.name) · \(made.era.label) · \((s.cwd as NSString).abbreviatingWithTildeInPath)\nClick to show its terminal"
+        return i
+    }
+
+    private func statusGlyph(_ status: String) -> String {
+        switch status {
+        case "busy": return "▶"
+        case "idle": return "○"
+        default: return "◐"
+        }
+    }
+
+    // MARK: - Actions
+
+    @objc private func focusSession(_ sender: NSMenuItem) {
+        guard let pid = sender.representedObject as? Int32 else { return }
+        TerminalFocus.focusApp(forSessionPID: pid)
+    }
+
+    @objc private func pickLanguage(_ sender: NSMenuItem) {
+        guard let raw = sender.representedObject as? String, let l = Lang(rawValue: raw) else { return }
+        Quips.setLanguage(l)
     }
 
     @objc private func installHooks() { runHookAction { try HooksInstaller.install() } }
     @objc private func removeHooks() { runHookAction { try HooksInstaller.remove() } }
-    @objc private func testCelebrate() { manager.testCelebrate() }
-    @objc private func beerBreak() { manager.testBeer() }
-    @objc private func balloonRide() { manager.testTrick() }
 
     private func runHookAction(_ op: () throws -> Void) {
         do {
             try op()
         } catch {
             let alert = NSAlert()
-            alert.messageText = "ClaudePet"
+            alert.messageText = "Claudme"
             alert.informativeText = "Could not update ~/.claude/settings.json: \(error)"
             alert.runModal()
         }

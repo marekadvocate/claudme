@@ -12,12 +12,16 @@ final class HookServer {
     static let defaultPort: UInt16 = 48291
 
     var onEvent: ((HookEvent) -> Void)?   // delivered on main thread
-    var onSnapshot: (() -> Void)?         // debug: GET /snapshot renders overlay to PNG
-    var onBeer: (() -> Void)?             // debug: GET /beer → random crab has a beer
-    var onTrick: (() -> Void)?            // debug: GET /trick → random crab balloon ride
+    /// Renders the overlay to a PNG. Only reachable when CLAUDME_DEBUG=1, so a normal
+    /// install exposes nothing but the hook endpoint.
+    var onSnapshot: (() -> Void)?
+
+    private static var debugEnabled: Bool {
+        ProcessInfo.processInfo.environment["CLAUDME_DEBUG"] == "1"
+    }
 
     private var listener: NWListener?
-    private let queue = DispatchQueue(label: "claudepet.hooks")
+    private let queue = DispatchQueue(label: "claudme.hooks")
 
     func start() {
         startListener(fixed: true)
@@ -30,7 +34,7 @@ final class HookServer {
         params.requiredLocalEndpoint = NWEndpoint.hostPort(host: "127.0.0.1", port: port)
 
         guard let l = try? NWListener(using: params) else {
-            NSLog("ClaudePet: cannot create listener")
+            NSLog("Claudme: cannot create listener")
             return
         }
         listener = l
@@ -41,10 +45,10 @@ final class HookServer {
             case .ready:
                 if let p = self.listener?.port?.rawValue {
                     Self.writePortFile(p)
-                    NSLog("ClaudePet: hook server on 127.0.0.1:\(p)")
+                    NSLog("Claudme: hook server on 127.0.0.1:\(p)")
                 }
             case .failed(let error):
-                NSLog("ClaudePet: listener failed: \(error)")
+                NSLog("Claudme: listener failed: \(error)")
                 self.listener?.cancel()
                 if fixed { self.startListener(fixed: false) }
             default:
@@ -68,11 +72,9 @@ final class HookServer {
             if let request = Self.completeRequest(in: buf) {
                 self.respond(conn)
                 if request.head.hasPrefix("GET /snapshot") {
-                    DispatchQueue.main.async { [weak self] in self?.onSnapshot?() }
-                } else if request.head.hasPrefix("GET /beer") {
-                    DispatchQueue.main.async { [weak self] in self?.onBeer?() }
-                } else if request.head.hasPrefix("GET /trick") {
-                    DispatchQueue.main.async { [weak self] in self?.onTrick?() }
+                    if Self.debugEnabled {
+                        DispatchQueue.main.async { [weak self] in self?.onSnapshot?() }
+                    }
                 } else {
                     self.dispatch(request.body, head: request.head)
                 }
@@ -137,7 +139,7 @@ final class HookServer {
 
     private static func writePortFile(_ port: UInt16) {
         let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("ClaudePet", isDirectory: true)
+            .appendingPathComponent("Claudme", isDirectory: true)
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         try? Data(String(port).utf8).write(to: dir.appendingPathComponent("port"))
     }
