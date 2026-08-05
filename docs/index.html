@@ -364,19 +364,21 @@ open build/Claudme.app</pre>
   const TOP = -3, ROWS = 9;                    // rows -3 .. 5
   const W = GRID_W*PX, H = ROWS*PX;
 
-  function draw(cv, capColor, phase, sleeping){
+  /// px lets subagent babies be drawn genuinely smaller rather than CSS-scaled
+  function draw(cv, capColor, phase, sleeping, px = PX){
+    const w = GRID_W*px, h = ROWS*px;
     const g = cv.getContext('2d');
     const dpr = Math.min(devicePixelRatio||1, 3);
-    cv.width = W*dpr; cv.height = H*dpr;
-    cv.style.width = W+'px'; cv.style.height = H+'px';
+    cv.width = w*dpr; cv.height = h*dpr;
+    cv.style.width = w+'px'; cv.style.height = h+'px';
     g.setTransform(dpr,0,0,dpr,0,0);
-    g.clearRect(0,0,W,H);
-    const cell = (c,r,col) => { g.fillStyle = col; g.fillRect(c*PX,(r-TOP)*PX,PX,PX); };
+    g.clearRect(0,0,w,h);
+    const cell = (c,r,col) => { g.fillStyle = col; g.fillRect(c*px,(r-TOP)*px,px,px); };
     for (const [c,r] of shell) cell(c,r,CRAB);
     for (const [c,r] of (phase ? legsB : legsA)) cell(c,r,CRAB);
     for (const [c,r] of hat) cell(c,r,capColor);
     for (const [c,r] of eyes){
-      if (sleeping){ g.fillStyle = INK; g.fillRect(c*PX,(r-TOP)*PX+PX*0.4,PX,PX*0.25); }
+      if (sleeping){ g.fillStyle = INK; g.fillRect(c*px,(r-TOP)*px+px*0.4,px,px*0.25); }
       else cell(c,r,INK);
     }
   }
@@ -495,15 +497,22 @@ open build/Claudme.app</pre>
     }
   }
 
+  /// Babies sit alongside the parent, drawn at half scale and bottom-aligned with it,
+  /// so they never stick out past the edge the parent is standing on.
+  const BPX = 2, BW = GRID_W*BPX, BH = ROWS*BPX;
   function babies(c, on){
     c.babies.forEach(b=>b.remove()); c.babies = [];
     if (!on) return;
     for (let i=0;i<3;i++){
       const b = document.createElement('canvas');
-      draw(b, c.cap, 0, false);
-      b.style.cssText = `position:absolute;transform:scale(.5);left:${(i%2?1:-1)*(20+i*9)}px;top:8px;image-rendering:pixelated`;
-      b.animate([{transform:'scale(.5) translateY(0)'},{transform:'scale(.5) translateY(-5px)'}],
-                {duration:320,direction:'alternate',iterations:Infinity});
+      draw(b, c.cap, 0, false, BPX);
+      const along = (i%2 ? 1 : -1) * (W*0.62 + Math.floor(i/2)*BW*0.9);
+      b.style.position = 'absolute';
+      b.style.left = (W/2 - BW/2 + along) + 'px';
+      b.style.top  = (H - BH) + 'px';        // feet level with the parent's
+      b.style.imageRendering = 'pixelated';
+      b.animate([{transform:'translateY(0)'},{transform:'translateY(-4px)'}],
+                {duration:300 + i*40, direction:'alternate', iterations:Infinity});
       c.el.appendChild(b); c.babies.push(b);
     }
     setTimeout(()=>{ c.babies.forEach(b=>b.remove()); c.babies=[]; }, 6000);
