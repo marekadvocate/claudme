@@ -19,6 +19,13 @@ final class PetManager {
         ) { [weak self] _ in
             self?.layoutOverlay()
         }
+        // fullscreen apps live on their own Space — re-derive the floor when it changes
+        NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.activeSpaceDidChangeNotification,
+            object: nil, queue: .main
+        ) { [weak self] _ in
+            self?.layoutOverlay()
+        }
         let t = Timer.scheduledTimer(withTimeInterval: 1.0 / 30.0, repeats: true) { [weak self] _ in
             self?.tick()
         }
@@ -46,19 +53,50 @@ final class PetManager {
 
     private func layoutOverlay() {
         guard let screen = NSScreen.main ?? NSScreen.screens.first else { return }
-        overlayWindow.setFrame(screen.frame, display: true)
-        let visible = screen.visibleFrame
+        if overlayWindow.frame != screen.frame {
+            overlayWindow.setFrame(screen.frame, display: true)
+        }
+        // on a fullscreen Space the Dock/menubar are gone — crabs drop to the real edges
+        var visible = screen.visibleFrame
+        if Self.hasFullscreenWindow(on: screen) {
+            visible = screen.frame
+        }
         // perimeter ring the pets crawl on — legs touch the visible-frame edges
         // (offsets derived from body center at (75,60), content half-extent ~21 px)
-        roamArea = RoamArea(
+        let area = RoamArea(
             minX: visible.minX - screen.frame.minX - 52,
             maxX: visible.maxX - screen.frame.minX - 98,
             minY: visible.minY - screen.frame.minY - 37,
             maxY: visible.maxY - screen.frame.minY - 83
         )
+        guard area != roamArea else { return }
+        roamArea = area
         for pet in pets.values {
             pet.roamArea = roamArea   // pets re-derive their edge position next tick
         }
+    }
+
+    /// any regular window covering the whole screen = a fullscreen Space is active
+    /// (window bounds/layer/PID need no screen-recording permission)
+    private static func hasFullscreenWindow(on screen: NSScreen) -> Bool {
+        guard let list = CGWindowListCopyWindowInfo(
+            [.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID
+        ) as? [[String: Any]] else { return false }
+        let myPid = ProcessInfo.processInfo.processIdentifier
+        let sw = screen.frame.width
+        let sh = screen.frame.height
+        for w in list {
+            guard let layer = (w[kCGWindowLayer as String] as? NSNumber)?.intValue, layer == 0,
+                  let pid = (w[kCGWindowOwnerPID as String] as? NSNumber)?.int32Value, pid != myPid,
+                  let bounds = w[kCGWindowBounds as String] as? [String: Any],
+                  let width = (bounds["Width"] as? NSNumber)?.doubleValue,
+                  let height = (bounds["Height"] as? NSNumber)?.doubleValue
+            else { continue }
+            if CGFloat(width) >= sw - 1 && CGFloat(height) >= sh - 1 {
+                return true
+            }
+        }
+        return false
     }
 
     // MARK: - Registry sync
@@ -187,6 +225,7 @@ final class PetManager {
         tickCount += 1
         if tickCount % 45 == 0 { checkGreetings(now: now) }
         if tickCount % 20 == 0 { checkSeparation() }
+        if tickCount % 60 == 0 { layoutOverlay() }   // catch fullscreen/Dock changes
     }
 
     /// crabs shouldn't stack — too-close pairs get nudged apart

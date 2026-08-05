@@ -40,7 +40,7 @@ enum ModelKind: String {
 }
 
 /// Perimeter ring the pets crawl on (overlay-local coordinates, y-up).
-struct RoamArea {
+struct RoamArea: Equatable {
     var minX: CGFloat
     var maxX: CGFloat
     var minY: CGFloat
