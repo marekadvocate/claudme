@@ -1,0 +1,551 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Claudme — your AI agents are a crime family</title>
+<meta name="description" content="One pixel crab per Claude Code session, crawling the edges of your Mac screen. See which agent finished, which is stuck, and which needs you.">
+<meta property="og:title" content="Claudme — your AI agents are a crime family">
+<meta property="og:description" content="One pixel crab per Claude Code session, crawling the edges of your screen.">
+<meta name="theme-color" content="#0d0c0b">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦀</text></svg>">
+<style>
+  *,*::before,*::after{box-sizing:border-box}
+  :root{
+    --bg:#0d0c0b; --panel:#171513; --line:#2b2724;
+    --ink:#f3ece4; --dim:#a2968a; --faint:#6d635b;
+    --crab:#d97757; --gold:#e8b04b;
+    --font:ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,sans-serif;
+    --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,monospace;
+  }
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);
+    line-height:1.65;-webkit-font-smoothing:antialiased;overflow-x:hidden;
+  }
+  .wrap{width:min(1080px,100% - 2.5rem);margin-inline:auto}
+  a{color:var(--crab)}
+  h1,h2,h3{line-height:1.15;letter-spacing:-.02em;margin:0}
+  section{padding:clamp(3.5rem,8vw,6rem) 0;border-top:1px solid var(--line)}
+  .eyebrow{
+    font:600 .72rem/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;
+    color:var(--crab);margin-bottom:1rem
+  }
+
+  /* ---------- hero ---------- */
+  header{padding:clamp(3rem,7vw,5rem) 0 0;text-align:center;border:0}
+  .logo{font-size:clamp(2.6rem,7vw,4.4rem);margin-bottom:.4rem}
+  h1{font-size:clamp(2rem,5.2vw,3.4rem);font-weight:800;max-width:19ch;margin-inline:auto}
+  .sub{color:var(--dim);font-size:clamp(1rem,2.2vw,1.2rem);max-width:56ch;margin:1.1rem auto 0}
+  .cta{display:flex;gap:.7rem;justify-content:center;flex-wrap:wrap;margin-top:2rem}
+  .btn{
+    display:inline-flex;align-items:center;gap:.5rem;padding:.7rem 1.3rem;border-radius:9px;
+    font-weight:600;font-size:.95rem;text-decoration:none;border:1px solid transparent;
+    transition:transform .12s ease,background .12s ease
+  }
+  .btn:hover{transform:translateY(-1px)}
+  .btn-p{background:var(--crab);color:#231208}
+  .btn-s{border-color:var(--line);color:var(--ink);background:var(--panel)}
+  .note{color:var(--faint);font-size:.82rem;margin-top:1rem}
+
+  /* ---------- simulated mac screen ---------- */
+  .stage{margin:3rem 0 0;position:relative}
+  .screen{
+    position:relative;aspect-ratio:16/10;border-radius:14px;overflow:hidden;
+    background:linear-gradient(150deg,#2a2320,#141a22 55%,#1d1512);
+    border:1px solid #34302c;box-shadow:0 30px 70px -30px #000,0 0 0 6px #0a0908;
+  }
+  .menubar{
+    height:26px;background:rgba(12,11,10,.62);backdrop-filter:blur(12px);
+    display:flex;align-items:center;gap:1rem;padding:0 .8rem;
+    font:500 11px/1 var(--font);color:#cfc6bd;border-bottom:1px solid rgba(255,255,255,.06)
+  }
+  .menubar .right{margin-left:auto;display:flex;gap:.9rem;align-items:center}
+  .win{
+    position:absolute;border-radius:9px;overflow:hidden;border:1px solid #3a342f;
+    background:#100e0d;box-shadow:0 20px 40px -18px #000
+  }
+  .win .bar{
+    height:24px;background:#221e1b;display:flex;align-items:center;gap:6px;padding:0 9px;
+    font:500 10px/1 var(--font);color:#8a8078;border-bottom:1px solid #2e2925
+  }
+  .dot{width:9px;height:9px;border-radius:50%}
+  .win pre{
+    margin:0;padding:9px 11px;font:11px/1.55 var(--mono);color:#b9ad9f;
+    white-space:pre-wrap;overflow:hidden
+  }
+  .g{color:#7fc08a}.o{color:var(--crab)}.y{color:var(--gold)}.d{color:#6d635b}
+  .dock{
+    position:absolute;left:50%;bottom:9px;transform:translateX(-50%);
+    display:flex;gap:7px;padding:6px 9px;border-radius:12px;
+    background:rgba(30,27,24,.66);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.08)
+  }
+  .dock i{width:26px;height:26px;border-radius:6px;display:block}
+
+  .crab{position:absolute;left:0;top:0;will-change:transform;pointer-events:none}
+  .crab canvas{display:block;image-rendering:pixelated}
+  .tag{
+    position:absolute;left:50%;transform:translateX(-50%);white-space:nowrap;
+    font:600 9px/1 var(--font);color:#fff;background:rgba(0,0,0,.42);
+    padding:2px 6px;border-radius:6px;backdrop-filter:blur(3px)
+  }
+  .bub{
+    position:absolute;left:50%;transform:translateX(-50%) scale(.6);white-space:nowrap;
+    font:500 10px/1 var(--font);color:#1a1a18;background:rgba(255,255,255,.95);
+    padding:4px 8px;border-radius:8px;opacity:0;transition:opacity .18s,transform .18s
+  }
+  .bub.on{opacity:1;transform:translateX(-50%) scale(1)}
+
+  .controls{display:flex;gap:.5rem;flex-wrap:wrap;justify-content:center;margin-top:1.4rem}
+  .controls button{
+    font:600 .82rem var(--font);padding:.5rem 1rem;border-radius:8px;cursor:pointer;
+    background:var(--panel);color:var(--ink);border:1px solid var(--line);transition:.12s
+  }
+  .controls button:hover{border-color:var(--crab);color:var(--crab)}
+
+  /* ---------- content ---------- */
+  .grid{display:grid;gap:1rem;grid-template-columns:repeat(auto-fit,minmax(255px,1fr));margin-top:2rem}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:1.3rem}
+  .card h3{font-size:1rem;margin-bottom:.4rem}
+  .card p{margin:0;color:var(--dim);font-size:.9rem}
+  .card .ico{font-size:1.5rem;display:block;margin-bottom:.6rem}
+
+  table{width:100%;border-collapse:collapse;margin-top:2rem;font-size:.92rem}
+  th,td{text-align:left;padding:.7rem .6rem;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--faint);font:600 .72rem var(--mono);letter-spacing:.1em;text-transform:uppercase}
+  td:first-child{width:44%;color:var(--ink)}
+  td:last-child{color:var(--dim)}
+
+  pre.code{
+    background:var(--panel);border:1px solid var(--line);border-radius:10px;
+    padding:1rem 1.2rem;overflow-x:auto;font:13px/1.7 var(--mono);color:#cbbfb2
+  }
+  pre.code .c{color:var(--faint)}
+
+  .lede{color:var(--dim);max-width:62ch;font-size:1.02rem;margin-top:.9rem}
+  blockquote{
+    margin:1.6rem 0;padding-left:1.1rem;border-left:2px solid var(--crab);
+    color:var(--ink);font-size:1.05rem;font-style:italic
+  }
+
+  /* ---------- porsche ---------- */
+  .fund{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:1.6rem;margin-top:2rem}
+  .meter{height:26px;border-radius:13px;background:#0e0d0c;border:1px solid var(--line);overflow:hidden;position:relative;margin:1rem 0 .5rem}
+  .meter i{display:block;height:100%;width:0.4%;background:linear-gradient(90deg,var(--crab),var(--gold));border-radius:13px}
+  .meter span{position:absolute;inset:0;display:grid;place-items:center;font:600 .74rem var(--mono);color:var(--ink)}
+  .fundrow{display:flex;justify-content:space-between;font-size:.8rem;color:var(--faint)}
+  .iban{font:600 .95rem var(--mono);background:#0e0d0c;border:1px dashed var(--line);border-radius:8px;padding:.7rem .9rem;margin-top:1rem;color:var(--dim);word-break:break-all}
+
+  footer{padding:3rem 0;border-top:1px solid var(--line);color:var(--faint);font-size:.85rem;text-align:center}
+  @media (max-width:640px){
+    .win{display:none}
+    .win.keep{display:block}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .crab{transition:none!important}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="logo">🦀</div>
+    <h1>Your AI agents are a crime family</h1>
+    <p class="sub">
+      Claudme gives every running Claude Code session a pixel crab that crawls the edge of
+      your screen. One glance tells you who just finished, who is stuck, and who is waiting
+      on you. Click one and its terminal comes to the front.
+    </p>
+    <div class="cta">
+      <a class="btn btn-p" href="#install">Install it</a>
+      <a class="btn btn-s" href="https://github.com/marekadvocate/claudme">★ GitHub</a>
+    </div>
+    <p class="note">macOS 13+ · native Swift · no Electron · no permissions · MIT</p>
+
+    <div class="stage">
+      <div class="screen" id="screen">
+        <div class="menubar">
+          <b>Claudme</b><span>File</span><span>Edit</span><span>View</span>
+          <div class="right"><span id="mbcount">🦀 5</span><span>Wed 02:14</span></div>
+        </div>
+
+        <div class="win" style="left:6%;top:16%;width:40%;height:46%">
+          <div class="bar"><i class="dot" style="background:#ff5f57"></i><i class="dot" style="background:#febc2e"></i><i class="dot" style="background:#28c840"></i>&nbsp;advocate — claude</div>
+          <pre><span class="d">&gt;</span> refactor the billing module
+<span class="o">✳</span> Thinking… <span class="d">(xhigh)</span>
+<span class="g">✓</span> read 14 files
+<span class="g">✓</span> edited invoice.ts
+<span class="y">▶</span> running tests…</pre>
+        </div>
+
+        <div class="win keep" style="left:50%;top:26%;width:42%;height:44%">
+          <div class="bar"><i class="dot" style="background:#ff5f57"></i><i class="dot" style="background:#febc2e"></i><i class="dot" style="background:#28c840"></i>&nbsp;igocity — claude</div>
+          <pre><span class="d">&gt;</span> add the map layer
+<span class="g">✓</span> Done in 4m 12s
+<span class="d">&gt;</span> <span class="o">▊</span></pre>
+        </div>
+
+        <div class="win" style="left:20%;top:52%;width:36%;height:30%">
+          <div class="bar"><i class="dot" style="background:#ff5f57"></i><i class="dot" style="background:#febc2e"></i><i class="dot" style="background:#28c840"></i>&nbsp;api — claude</div>
+          <pre><span class="y">?</span> Allow <span class="o">rm -rf ./tmp</span>?
+<span class="d">  waiting for you…</span></pre>
+        </div>
+
+        <div class="dock">
+          <i style="background:linear-gradient(145deg,#4a9eff,#1a6fd4)"></i>
+          <i style="background:linear-gradient(145deg,#3ddc84,#1a9e5a)"></i>
+          <i style="background:linear-gradient(145deg,#d97757,#a8482c)"></i>
+          <i style="background:linear-gradient(145deg,#f5c451,#c8952a)"></i>
+          <i style="background:linear-gradient(145deg,#8b7fd4,#5d4fa8)"></i>
+        </div>
+      </div>
+
+      <div class="controls">
+        <button data-act="done">Finish a task 🎉</button>
+        <button data-act="need">Needs you ✋</button>
+        <button data-act="beer">Beer break 🍺</button>
+        <button data-act="subs">Spawn subagents 👶</button>
+        <button data-act="wave">Stadium wave 🌊</button>
+      </div>
+      <p class="note">That's a simulation of your desktop — the real thing runs on your actual screen edges.</p>
+    </div>
+  </div>
+</header>
+
+<section>
+  <div class="wrap">
+    <p class="eyebrow">The problem</p>
+    <h2>Six agents running. Which one needs you?</h2>
+    <blockquote>
+      You alt-tab through five terminals to find the one that finished. By the time you
+      find it, you've forgotten what you were doing.
+    </blockquote>
+    <p class="lede">
+      Claudme moves that question out of your working memory and into your peripheral
+      vision. The crabs live on the edges of your screen, so they never cover your work —
+      but you always know, without looking directly, who is busy and who is done.
+    </p>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <p class="eyebrow">Reading the crabs</p>
+    <h2>Every state means something</h2>
+    <table>
+      <tr><th>What you see</th><th>What it means</th></tr>
+      <tr><td>Strolling slowly, small</td><td>Session is idle</td></tr>
+      <tr><td>Hurrying, full size, steam off its head</td><td>Working — steam means <code>xhigh</code> or <code>max</code> effort</td></tr>
+      <tr><td>Stops, hops, <code>!</code> bubble</td><td><b>Waiting for you</b> — permission or input</td></tr>
+      <tr><td>Jump, confetti, “It's done, boss.”</td><td>Turn just finished</td></tr>
+      <tr><td>Curled up on the bottom edge, <code>z Z</code></td><td>Idle more than 10 minutes</td></tr>
+      <tr><td>⚠️ bubble</td><td>Rate limit or API error</td></tr>
+      <tr><td>Little crabs bobbing alongside</td><td>That session's subagents</td></tr>
+      <tr><td>🕶️ black shades</td><td>Running with <code>--dangerously-skip-permissions</code></td></tr>
+      <tr><td>🛰️ orbiting satellite</td><td>Remote or bridged session</td></tr>
+    </table>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <p class="eyebrow">The family</p>
+    <h2>Ranks are earned, not assigned</h2>
+    <p class="lede">
+      Every session is a made man with a stable name — the same session always gets the
+      same crab. Rank comes from staying alive, so your longest-running agent runs the family.
+    </p>
+    <pre class="code">Don Vito Opus
+<span class="c">└─ rank ── given name ── family</span>
+
+<span class="c">Picciotto</span>  under 10 minutes      <span class="c">Given names come from six eras:</span>
+<span class="c">Soldato</span>    under an hour         <span class="c">Roman · Medieval · Renaissance</span>
+<span class="c">Capo</span>       under four hours      <span class="c">Prohibition · Yakuza · Syndicate</span>
+<span class="c">Don</span>        the veteran           <span class="c">Family = the model it runs on</span></pre>
+    <div class="grid">
+      <div class="card"><span class="ico">🎩</span><h3>Unique colours</h3><p>Each live crab wears a differently coloured fedora, matching its dot in the menubar. Learn them once and you never need the label.</p></div>
+      <div class="card"><span class="ico">🍺</span><h3>A life of its own</h3><p>They greet each other in passing, take beer breaks, clink glasses with neighbours and do a stadium wave when the last busy session finishes.</p></div>
+      <div class="card"><span class="ico">🖱️</span><h3>Click to jump</h3><p>Click a crab and the terminal running that session comes to the front. Right-click for its working directory and status.</p></div>
+      <div class="card"><span class="ico">🌍</span><h3>Speaks your language</h3><p>English, Slovak and Czech out of the box, written in the voice of a made man reporting to his boss. Adding one is a single pull request.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="install">
+  <div class="wrap">
+    <p class="eyebrow">Install</p>
+    <h2>Two commands</h2>
+    <p class="lede">Requires macOS 13+ and Xcode command line tools. No dependencies, no package manager.</p>
+    <pre class="code">git clone https://github.com/marekadvocate/claudme.git
+cd claudme &amp;&amp; ./build.sh
+open build/Claudme.app</pre>
+    <p class="lede">
+      Then hit <b>Live reactions</b> in the menubar to install the Claude Code hooks, so
+      crabs react the instant a turn ends. The hook is a one-line <code>curl</code> to
+      <code>127.0.0.1</code> that always exits 0 — it can never block or slow down Claude
+      Code, and your <code>settings.json</code> is backed up first. Removing it is one click.
+    </p>
+    <div class="grid">
+      <div class="card"><span class="ico">🔒</span><h3>Nothing leaves your Mac</h3><p>No telemetry, no accounts, no network beyond loopback. No screen recording or accessibility permissions either.</p></div>
+      <div class="card"><span class="ico">🪶</span><h3>~3 MB, native</h3><p>Plain Swift and AppKit. Every crab is drawn in code — there isn't a single image asset in the repo.</p></div>
+      <div class="card"><span class="ico">🖥️</span><h3>Every display</h3><p>One overlay per monitor. Crabs are dealt across your screens and stay on their own.</p></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <p class="eyebrow">Open source</p>
+    <h2>Come build a crab</h2>
+    <p class="lede">
+      MIT licensed and dependency-free — <code>./build.sh</code> is the entire build system.
+      The best first contributions are a new language, a new idle behaviour, or an era skin.
+      Everything you need is in <a href="https://github.com/marekadvocate/claudme/blob/master/CONTRIBUTING.md">CONTRIBUTING.md</a>.
+    </p>
+    <div class="cta" style="justify-content:flex-start">
+      <a class="btn btn-p" href="https://github.com/marekadvocate/claudme">★ Star on GitHub</a>
+      <a class="btn btn-s" href="https://github.com/marekadvocate/claudme/issues">Open an issue</a>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <p class="eyebrow">Support</p>
+    <h2>Buy me a Porsche</h2>
+    <p class="lede">
+      Claudme is free and always will be. But a man can dream, and the dream is German.
+    </p>
+    <div class="fund">
+      <div style="display:flex;justify-content:space-between;align-items:baseline">
+        <b>🏎️ The Porsche Fund</b>
+        <span style="color:var(--faint);font-size:.85rem">goal €100,000</span>
+      </div>
+      <div class="meter"><i id="bar"></i><span id="bartext">€0 of €100,000</span></div>
+      <div class="fundrow"><span>Every crab helps</span><span id="pct">0.0%</span></div>
+      <div class="iban" id="iban">IBAN — add yours here before going live</div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <p>
+      Built by <a href="https://github.com/marekadvocate">Marek Podhorsky</a> ·
+      <a href="https://github.com/marekadvocate/claudme">Source</a> · MIT
+    </p>
+    <p style="margin-top:.6rem;color:#4f4842">
+      Works with Claude Code. Not affiliated with, endorsed by, or sponsored by Anthropic.
+    </p>
+  </div>
+</footer>
+
+<script>
+(() => {
+  const PX = 3, GRID_W = 11;
+  const CRAB = '#d97757', INK = '#1e1e1c';
+  const CAPS = ['#1f3b8a','#0d9488','#f9cc15','#7c3aed','#17a34a','#ec4899','#0ea5e9','#dc2626'];
+
+  // same pixel geometry as the app: 11x6 body, fedora on negative rows
+  const shell = [];
+  for (let x=1;x<=9;x++){ shell.push([x,0]); shell.push([x,1]); }
+  for (let x=0;x<=10;x++) shell.push([x,2]);
+  for (let x=0;x<=10;x++) if (x!==2 && x!==8) shell.push([x,3]);
+  const legsA = [[1,4],[3,4],[7,4],[9,4],[1,5],[3,5],[7,5],[9,5]];
+  const legsB = [[2,4],[4,4],[6,4],[8,4],[2,5],[4,5],[6,5],[8,5]];
+  const hat   = [[4,-3],[6,-3],[3,-2],[4,-2],[5,-2],[6,-2],[7,-2],
+                 [1,-1],[2,-1],[3,-1],[4,-1],[5,-1],[6,-1],[7,-1],[8,-1],[9,-1]];
+  const eyes  = [[2,3],[8,3]];
+
+  const TOP = -3, ROWS = 9;                    // rows -3 .. 5
+  const W = GRID_W*PX, H = ROWS*PX;
+
+  function draw(cv, capColor, phase, sleeping){
+    const g = cv.getContext('2d');
+    const dpr = Math.min(devicePixelRatio||1, 3);
+    cv.width = W*dpr; cv.height = H*dpr;
+    cv.style.width = W+'px'; cv.style.height = H+'px';
+    g.setTransform(dpr,0,0,dpr,0,0);
+    g.clearRect(0,0,W,H);
+    const cell = (c,r,col) => { g.fillStyle = col; g.fillRect(c*PX,(r-TOP)*PX,PX,PX); };
+    for (const [c,r] of shell) cell(c,r,CRAB);
+    for (const [c,r] of (phase ? legsB : legsA)) cell(c,r,CRAB);
+    for (const [c,r] of hat) cell(c,r,capColor);
+    for (const [c,r] of eyes){
+      if (sleeping){ g.fillStyle = INK; g.fillRect(c*PX,(r-TOP)*PX+PX*0.4,PX,PX*0.25); }
+      else cell(c,r,INK);
+    }
+  }
+
+  const NAMES = [
+    ['Don Vito Opus',0], ['Capo Kenji Fable',1], ['Soldato Marcus Haiku',2],
+    ['Don Lorenzo Opus',3], ['Picciotto Nyx Sonnet',4]
+  ];
+
+  const screen = document.getElementById('screen');
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const crabs = [];
+
+  function makeCrab(name, capIdx, t){
+    const el = document.createElement('div');
+    el.className = 'crab';
+    const cv = document.createElement('canvas');
+    const tag = document.createElement('div'); tag.className='tag'; tag.textContent=name;
+    const bub = document.createElement('div'); bub.className='bub';
+    el.append(cv, tag, bub);
+    screen.appendChild(el);
+    const c = {
+      el, cv, tag, bub, cap: CAPS[capIdx % CAPS.length], name,
+      t, dir: Math.random()<.5?1:-1, speed: 14+Math.random()*14,
+      phase:0, seg:-1, state:'idle', until:0, babies:[], hop:0
+    };
+    draw(cv, c.cap, 0, false);
+    return c;
+  }
+  NAMES.forEach(([n,i],k) => crabs.push(makeCrab(n,i,k*0.19)));
+
+  function say(c, text, ms=2200){
+    c.bub.textContent = text; c.bub.classList.add('on');
+    clearTimeout(c._bt);
+    c._bt = setTimeout(()=>c.bub.classList.remove('on'), ms);
+  }
+
+  // perimeter of the simulated screen: bottom -> right -> top -> left
+  function place(c, rect){
+    const w = rect.width, h = rect.height, P = 2*(w+h);
+    let v = ((c.t % 1) + 1) % 1 * P, x, y, seg;
+    if (v < w){ x = v; y = h; seg = 0; }
+    else if ((v-=w) < h){ x = w; y = h - v; seg = 1; }
+    else if ((v-=h) < w){ x = w - v; y = 0; seg = 2; }
+    else { v -= w; x = 0; y = v; seg = 3; }
+
+    const rot = [0, -90, 180, 90][seg];
+    // nudge the body so its feet touch the edge, whatever the rotation
+    const off = [[0,-H/2],[ -H/2,0],[0,H/2],[H/2,0]][seg];
+    const hop = c.hop ? Math.sin(c.hop*Math.PI)*9 : 0;
+    const hx = seg===1 ? -hop : seg===3 ? hop : 0;
+    const hy = seg===0 ? -hop : seg===2 ? hop : 0;
+
+    c.el.style.transform =
+      `translate(${x - W/2 + off[0] + hx}px, ${y - H/2 + off[1] + hy}px) rotate(${rot}deg)`;
+    c.tag.style.top  = seg===2 ? (H+5)+'px' : '-16px';
+    c.bub.style.top  = seg===2 ? (H+20)+'px' : '-32px';
+    // labels stay upright while the body turns
+    c.tag.style.transform = `translateX(-50%) rotate(${-rot}deg)`;
+    c.bub.style.transform = c.bub.classList.contains('on')
+      ? `translateX(-50%) rotate(${-rot}deg) scale(1)`
+      : `translateX(-50%) rotate(${-rot}deg) scale(.6)`;
+    if (seg !== c.seg) c.seg = seg;
+  }
+
+  let last = performance.now();
+  function frame(now){
+    const dt = Math.min((now-last)/1000, .05); last = now;
+    const rect = screen.getBoundingClientRect();
+    const P = 2*(rect.width + rect.height);
+
+    for (const c of crabs){
+      const moving = c.state === 'idle' || c.state === 'busy';
+      if (moving && !reduced){
+        const sp = (c.state==='busy' ? c.speed*2.4 : c.speed);
+        c.t += (c.dir * sp * dt) / P;
+        c.phase = (Math.floor(((c.t%1)+1)%1 * P / 7) & 1);
+      }
+      if (c.hop > 0) c.hop = Math.max(0, c.hop - dt*2.2);
+      if (c.until && now > c.until){ c.until = 0; c.state = 'idle'; redraw(c); }
+      place(c, rect);
+    }
+    requestAnimationFrame(frame);
+  }
+  function redraw(c){ draw(c.cv, c.cap, c.phase, c.state==='sleep'); }
+
+  // repaint legs only when the step phase flips
+  setInterval(() => { for (const c of crabs){ if (c._lp !== c.phase){ c._lp = c.phase; redraw(c); } } }, 60);
+  requestAnimationFrame(frame);
+
+  // ---- confetti ----
+  function confetti(c){
+    const rect = screen.getBoundingClientRect();
+    const m = c.el.style.transform.match(/translate\(([-\d.]+)px,\s*([-\d.]+)px\)/);
+    if (!m) return;
+    const ox = +m[1] + W/2, oy = +m[2] + H/2;
+    for (let i=0;i<26;i++){
+      const p = document.createElement('div');
+      const col = [CRAB,'#e8b04b','#0ea5e9','#ec4899','#fff'][i%5];
+      p.style.cssText = `position:absolute;width:5px;height:5px;background:${col};left:${ox}px;top:${oy}px;pointer-events:none;border-radius:1px`;
+      screen.appendChild(p);
+      const ang = -Math.PI/2 + (Math.random()-.5)*1.5, v = 90+Math.random()*130;
+      const vx = Math.cos(ang)*v, vy = Math.sin(ang)*v;
+      const t0 = performance.now();
+      (function step(t){
+        const s = (t-t0)/1000;
+        if (s > 1.5){ p.remove(); return; }
+        p.style.transform = `translate(${vx*s}px, ${vy*s + 300*s*s}px) rotate(${s*540}deg)`;
+        p.style.opacity = String(1 - s/1.5);
+        requestAnimationFrame(step);
+      })(t0);
+    }
+  }
+
+  function babies(c, on){
+    c.babies.forEach(b=>b.remove()); c.babies = [];
+    if (!on) return;
+    for (let i=0;i<3;i++){
+      const b = document.createElement('canvas');
+      draw(b, c.cap, 0, false);
+      b.style.cssText = `position:absolute;transform:scale(.5);left:${(i%2?1:-1)*(20+i*9)}px;top:8px;image-rendering:pixelated`;
+      b.animate([{transform:'scale(.5) translateY(0)'},{transform:'scale(.5) translateY(-5px)'}],
+                {duration:320,direction:'alternate',iterations:Infinity});
+      c.el.appendChild(b); c.babies.push(b);
+    }
+    setTimeout(()=>{ c.babies.forEach(b=>b.remove()); c.babies=[]; }, 6000);
+  }
+
+  const LINES = {
+    done:['It’s done, boss.','Taken care of.','Clean job.','No witnesses.'],
+    need:['Boss? A word.','Waiting on you.','Say the word.'],
+    beer:['Ahh~','Salute.','That’s the stuff.']
+  };
+  const pick = a => a[Math.floor(Math.random()*a.length)];
+
+  document.querySelectorAll('.controls button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const act = btn.dataset.act;
+      const c = crabs[Math.floor(Math.random()*crabs.length)];
+      const now = performance.now();
+      if (act === 'done'){ c.state='party'; c.until=now+2600; c.hop=1; say(c, pick(LINES.done), 2600); confetti(c); }
+      if (act === 'need'){ c.state='need'; c.until=now+4200; c.hop=1; say(c, pick(LINES.need), 4200); }
+      if (act === 'beer'){ c.state='beer'; c.until=now+3200; say(c, pick(LINES.beer), 3200); }
+      if (act === 'subs'){ babies(c, true); say(c,'The kids are working.',3000); }
+      if (act === 'wave'){
+        [...crabs].sort((a,b)=>a.t-b.t).forEach((cc,i)=>
+          setTimeout(()=>{ cc.hop = 1; }, i*130));
+      }
+    });
+  });
+
+  // a session finishes on its own every so often, so the page is alive
+  setInterval(() => {
+    if (document.hidden) return;
+    const c = crabs[Math.floor(Math.random()*crabs.length)];
+    if (c.state !== 'idle') return;
+    c.state='party'; c.until=performance.now()+2600; c.hop=1;
+    say(c, pick(LINES.done), 2600); confetti(c);
+  }, 9000);
+
+  // one crab is always busy, one always asleep — shows the range of states
+  crabs[0].state = 'busy';
+  crabs[4].state = 'sleep'; redraw(crabs[4]); say(crabs[4],'z Z', 999999);
+
+  // ---- porsche meter ----
+  const RAISED = 0, GOAL = 100000;
+  const pctVal = Math.min(100, RAISED/GOAL*100);
+  document.getElementById('bar').style.width = Math.max(0.4, pctVal) + '%';
+  document.getElementById('bartext').textContent =
+    `€${RAISED.toLocaleString('en-US')} of €${GOAL.toLocaleString('en-US')}`;
+  document.getElementById('pct').textContent = pctVal.toFixed(1) + '%';
+})();
+</script>
+</body>
+</html>
