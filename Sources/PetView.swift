@@ -1022,11 +1022,16 @@ final class PetView: NSView {
             // bottom → 0, right wall → +90° CCW, ceiling → 180°, left wall → -90°
             let angles: [CGFloat] = [0, .pi / 2, .pi, -.pi / 2]
             setBodyAngle(angles[seg], animated: !firstTime)
-            // bubble goes below the pet when crawling on the ceiling
-            bubble.setFrameOrigin(NSPoint(x: bubble.frame.origin.x, y: seg == 2 ? 22 : 90))
+            // On the floor the crab sits at the very bottom of the screen, so its label
+            // and bubble have to go above it; on the ceiling the bubble goes below.
+            let bubbleY: CGFloat = seg == 2 ? 22 : (seg == 0 ? 122 : 90)
+            bubble.setFrameOrigin(NSPoint(x: bubble.frame.origin.x, y: bubbleY))
             positionPill()
         }
     }
+
+    /// label sits under the crab everywhere except the floor, where there's no room
+    private var pillBaseY: CGFloat { currentSegment == 0 ? 100 : 2 }
 
     /// keep the name pill on-screen: shift it inward on the side edges
     private var pillCenterX: CGFloat {
@@ -1041,7 +1046,7 @@ final class PetView: NSView {
         let w = namePill.frame.width
         var x = pillCenterX - w / 2
         x = min(max(x, 0), bounds.width - w)
-        namePill.setFrameOrigin(NSPoint(x: x, y: 2))
+        namePill.setFrameOrigin(NSPoint(x: x, y: pillBaseY))
     }
 
     /// bottom → right → top → left, wrapping
@@ -1208,7 +1213,7 @@ final class PetView: NSView {
         let h = namePill.frame.height + 3
         var x = pillCenterX - w / 2
         x = min(max(x, 0), bounds.width - w)   // keep long pills inside the view
-        namePill.frame = NSRect(x: x, y: 2, width: w, height: h)
+        namePill.frame = NSRect(x: x, y: pillBaseY, width: w, height: h)
     }
 
     // MARK: - Click interaction: jump to the session's terminal

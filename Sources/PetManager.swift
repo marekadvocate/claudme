@@ -41,7 +41,8 @@ final class PetManager {
         w.isOpaque = false
         w.backgroundColor = .clear
         w.hasShadow = false
-        w.level = .floating
+        // one notch above the Dock so crabs walk in front of it, not behind its blur
+        w.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.dockWindow)) + 1)
         w.ignoresMouseEvents = true    // fully click-through, pets never steal input
         w.collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle, .fullScreenAuxiliary]
         w.isReleasedWhenClosed = false
@@ -56,10 +57,15 @@ final class PetManager {
         if overlayWindow.frame != screen.frame {
             overlayWindow.setFrame(screen.frame, display: true)
         }
-        // On a fullscreen Space the Dock/menubar are gone. Use the fullscreen window's
-        // own rect rather than screen.frame — on notched displays it stops below the
-        // notch strip (e.g. 949 pt tall on a 982 pt screen).
-        let visible = Self.fullscreenRect(on: screen) ?? screen.visibleFrame
+        // Always the physical display edges — the overlay sits above the Dock, so no
+        // need to dodge it, and this behaves identically in and out of fullscreen.
+        // Only the top is inset: the menu bar strip (and the notch inside it) would
+        // swallow anything drawn there. That inset equals a fullscreen window's top.
+        let topInset = max(screen.safeAreaInsets.top, screen.frame.maxY - screen.visibleFrame.maxY)
+        let visible = NSRect(x: screen.frame.minX,
+                             y: screen.frame.minY,
+                             width: screen.frame.width,
+                             height: screen.frame.height - topInset)
         // perimeter ring the pets crawl on — legs touch the visible-frame edges
         // (offsets derived from body center at (75,60), content half-extent ~21 px)
         let area = RoamArea(
@@ -75,43 +81,6 @@ final class PetManager {
         }
     }
 
-    /// AppKit rect of a window filling the screen on a fullscreen Space, if one is active.
-    /// A fullscreen window spans the full width and runs past the Dock to the screen's
-    /// bottom edge — that's what separates it from a merely zoomed window.
-    /// Only bounds/layer/PID are read, so no screen-recording permission is needed.
-    private static func fullscreenRect(on screen: NSScreen) -> NSRect? {
-        guard let list = CGWindowListCopyWindowInfo(
-            [.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID
-        ) as? [[String: Any]] else { return nil }
-
-        let myPid = ProcessInfo.processInfo.processIdentifier
-        let frame = screen.frame
-        let minHeight = screen.visibleFrame.height + 1        // taller than a zoomed window
-        let flipHeight = NSScreen.screens.first?.frame.height ?? frame.height
-        var best: NSRect?
-
-        for w in list {
-            guard let layer = (w[kCGWindowLayer as String] as? NSNumber)?.intValue, layer == 0,
-                  let pid = (w[kCGWindowOwnerPID as String] as? NSNumber)?.int32Value, pid != myPid,
-                  let bounds = w[kCGWindowBounds as String] as? [String: Any],
-                  let cgX = (bounds["X"] as? NSNumber)?.doubleValue,
-                  let cgY = (bounds["Y"] as? NSNumber)?.doubleValue,
-                  let width = (bounds["Width"] as? NSNumber)?.doubleValue,
-                  let height = (bounds["Height"] as? NSNumber)?.doubleValue,
-                  CGFloat(width) >= frame.width - 1,
-                  CGFloat(height) >= minHeight,
-                  CGFloat(cgY + height) >= flipHeight - 1     // runs to the screen bottom
-            else { continue }
-
-            // CG coordinates are y-down from the top of the primary display
-            let rect = NSRect(x: CGFloat(cgX),
-                              y: flipHeight - CGFloat(cgY + height),
-                              width: CGFloat(width),
-                              height: CGFloat(height))
-            if best == nil || rect.height > best!.height { best = rect }
-        }
-        return best
-    }
 
     // MARK: - Registry sync
 
