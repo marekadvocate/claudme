@@ -56,11 +56,10 @@ final class PetManager {
         if overlayWindow.frame != screen.frame {
             overlayWindow.setFrame(screen.frame, display: true)
         }
-        // on a fullscreen Space the Dock/menubar are gone — crabs drop to the real edges
-        var visible = screen.visibleFrame
-        if Self.hasFullscreenWindow(on: screen) {
-            visible = screen.frame
-        }
+        // On a fullscreen Space the Dock/menubar are gone. Use the fullscreen window's
+        // own rect rather than screen.frame — on notched displays it stops below the
+        // notch strip (e.g. 949 pt tall on a 982 pt screen).
+        let visible = Self.fullscreenRect(on: screen) ?? screen.visibleFrame
         // perimeter ring the pets crawl on — legs touch the visible-frame edges
         // (offsets derived from body center at (75,60), content half-extent ~21 px)
         let area = RoamArea(
@@ -76,27 +75,42 @@ final class PetManager {
         }
     }
 
-    /// any regular window covering the whole screen = a fullscreen Space is active
-    /// (window bounds/layer/PID need no screen-recording permission)
-    private static func hasFullscreenWindow(on screen: NSScreen) -> Bool {
+    /// AppKit rect of a window filling the screen on a fullscreen Space, if one is active.
+    /// A fullscreen window spans the full width and runs past the Dock to the screen's
+    /// bottom edge — that's what separates it from a merely zoomed window.
+    /// Only bounds/layer/PID are read, so no screen-recording permission is needed.
+    private static func fullscreenRect(on screen: NSScreen) -> NSRect? {
         guard let list = CGWindowListCopyWindowInfo(
             [.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID
-        ) as? [[String: Any]] else { return false }
+        ) as? [[String: Any]] else { return nil }
+
         let myPid = ProcessInfo.processInfo.processIdentifier
-        let sw = screen.frame.width
-        let sh = screen.frame.height
+        let frame = screen.frame
+        let minHeight = screen.visibleFrame.height + 1        // taller than a zoomed window
+        let flipHeight = NSScreen.screens.first?.frame.height ?? frame.height
+        var best: NSRect?
+
         for w in list {
             guard let layer = (w[kCGWindowLayer as String] as? NSNumber)?.intValue, layer == 0,
                   let pid = (w[kCGWindowOwnerPID as String] as? NSNumber)?.int32Value, pid != myPid,
                   let bounds = w[kCGWindowBounds as String] as? [String: Any],
+                  let cgX = (bounds["X"] as? NSNumber)?.doubleValue,
+                  let cgY = (bounds["Y"] as? NSNumber)?.doubleValue,
                   let width = (bounds["Width"] as? NSNumber)?.doubleValue,
-                  let height = (bounds["Height"] as? NSNumber)?.doubleValue
+                  let height = (bounds["Height"] as? NSNumber)?.doubleValue,
+                  CGFloat(width) >= frame.width - 1,
+                  CGFloat(height) >= minHeight,
+                  CGFloat(cgY + height) >= flipHeight - 1     // runs to the screen bottom
             else { continue }
-            if CGFloat(width) >= sw - 1 && CGFloat(height) >= sh - 1 {
-                return true
-            }
+
+            // CG coordinates are y-down from the top of the primary display
+            let rect = NSRect(x: CGFloat(cgX),
+                              y: flipHeight - CGFloat(cgY + height),
+                              width: CGFloat(width),
+                              height: CGFloat(height))
+            if best == nil || rect.height > best!.height { best = rect }
         }
-        return false
+        return best
     }
 
     // MARK: - Registry sync
@@ -237,7 +251,8 @@ final class PetManager {
                 let a = list[i], b = list[j]
                 let dx = a.frame.midX - b.frame.midX
                 let dy = a.frame.midY - b.frame.midY
-                if dx * dx + dy * dy < 44 * 44 {
+                // wide enough that the royal-name pills stop overlapping too
+                if dx * dx + dy * dy < 105 * 105 {
                     a.separate(from: b)
                 }
             }
