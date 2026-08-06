@@ -180,10 +180,42 @@
     .commits li{flex-direction:column;gap:.15rem}
     td:first-child{width:52%}
   }
+
+  /* ---------- horizontal paging ----------
+     Wide screens read this sideways, one panel per screenful, which suits a page whose
+     whole subject lives along the edges of a display. Anything narrow — phones, and
+     anyone who prefers reduced motion — keeps ordinary vertical scrolling, because
+     sideways on a phone is miserable. */
+  @media (min-width:900px) and (prefers-reduced-motion:no-preference){
+    html,body{height:100%;overflow:hidden}
+    .track{
+      display:flex;height:100vh;overflow-x:auto;overflow-y:hidden;
+      scroll-snap-type:x mandatory;scroll-behavior:smooth;
+      scrollbar-width:thin;scrollbar-color:var(--line) transparent
+    }
+    .track::-webkit-scrollbar{height:10px}
+    .track::-webkit-scrollbar-thumb{background:var(--line);border-radius:5px}
+    .track > header,.track > section,.track > footer{
+      flex:0 0 100vw;height:100vh;overflow-y:auto;scroll-snap-align:start;
+      display:flex;flex-direction:column;justify-content:center;padding:2rem 0
+    }
+    .track > header{justify-content:flex-start;padding-top:clamp(2rem,6vh,4rem)}
+    .track > footer{justify-content:center}
+    .hint{
+      position:fixed;right:1.1rem;bottom:1rem;z-index:20;
+      font:600 .72rem/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;
+      color:var(--faint);background:var(--panel);border:1px solid var(--line);
+      border-radius:999px;padding:.45rem .8rem;pointer-events:none;
+      animation:nudge 2.4s ease-in-out infinite
+    }
+    @keyframes nudge{0%,100%{transform:translateX(0)}50%{transform:translateX(5px)}}
+  }
+  @media not all and (min-width:900px){ .hint{display:none} }
   @media (prefers-reduced-motion:reduce){ .crab{transition:none!important} }
 </style>
 </head>
 <body>
+<div class="track">
 
 <header>
   <div class="wrap" style="text-align:left">
@@ -464,6 +496,8 @@ open build/Claudme.app</pre>
   </div>
 </footer>
 
+</div>
+<div class="hint">scroll →</div>
 <script>
 (() => {
   // crabs scale with the stage — five 3px-grid crabs would swamp a phone
@@ -777,6 +811,51 @@ open build/Claudme.app</pre>
   crabs[0].state = 'busy';
   crabs[4].state = 'sleep'; redraw(crabs[4]); say(crabs[4],'z Z', 999999);
 
+  // ---- drive the horizontal track with a normal wheel / trackpad / keyboard ----
+  (() => {
+    const track = document.querySelector('.track');
+    const sideways = () => getComputedStyle(track).overflowX === 'auto'
+                        && innerWidth >= 900;
+    addEventListener('wheel', e => {
+      if (!sideways()) return;
+      const panel = e.target.closest('.track > *');
+      // let a panel scroll itself first if its own content overflows
+      if (panel && panel.scrollHeight > panel.clientHeight + 2){
+        const atTop = panel.scrollTop <= 0, atEnd =
+          panel.scrollTop + panel.clientHeight >= panel.scrollHeight - 2;
+        if (!(atTop && e.deltaY < 0) && !(atEnd && e.deltaY > 0)) return;
+      }
+      if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;   // real horizontal gesture
+      e.preventDefault();
+      track.scrollLeft += e.deltaY;
+    }, { passive: false });
+
+    addEventListener('keydown', e => {
+      if (!sideways() || e.metaKey || e.ctrlKey) return;
+      const step = innerWidth;
+      if (e.key === 'ArrowRight' || e.key === 'PageDown') { track.scrollLeft += step; e.preventDefault(); }
+      if (e.key === 'ArrowLeft'  || e.key === 'PageUp')   { track.scrollLeft -= step; e.preventDefault(); }
+      if (e.key === 'Home') { track.scrollLeft = 0; e.preventDefault(); }
+      if (e.key === 'End')  { track.scrollLeft = track.scrollWidth; e.preventDefault(); }
+    });
+
+    // in-page anchors must move the track, not the (unscrollable) document
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+      a.addEventListener('click', e => {
+        const el = document.querySelector(a.getAttribute('href'));
+        if (!sideways() || !el) return;
+        e.preventDefault();
+        const panel = el.closest('.track > *') || el;
+        track.scrollTo({ left: panel.offsetLeft, behavior: 'smooth' });
+      });
+    });
+
+    const hint = document.querySelector('.hint');
+    track.addEventListener('scroll', () => {
+      if (hint) hint.style.opacity = track.scrollLeft > 40 ? '0' : '1';
+    }, { passive: true });
+  })();
+
   // ---- crabs that escape the demo and follow you down the page ----
   // Once the stage scrolls away they climb out and walk the top edge of whichever
   // window is on screen, hopping to a new one as that one leaves.
@@ -805,7 +884,7 @@ open build/Claudme.app</pre>
     function step(now) {
       const dt = Math.min((now - last) / 1000, .05); last = now;
       const stage = document.getElementById('screen').getBoundingClientRect();
-      const escaped = stage.bottom < 60;          // demo is above the fold
+      const escaped = stage.bottom < 60 || stage.right < 80;   // scrolled past, either axis
       const options = escaped ? perches() : [];
 
       roamers.forEach((c, i) => {
