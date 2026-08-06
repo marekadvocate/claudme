@@ -7,16 +7,31 @@
 <meta name="description" content="One pixel crab per Claude Code session, crawling the edges of your Mac screen. See which agent finished, which is stuck, and which needs you.">
 <meta property="og:title" content="Claudme — your AI agents are a crime family">
 <meta property="og:description" content="One pixel crab per Claude Code session, crawling the edges of your screen.">
-<meta name="theme-color" content="#0d0c0b">
+<meta name="theme-color" content="#0d6e6e">
 <link rel="icon" type="image/svg+xml" href="logo.svg">
-<meta property="og:image" content="https://marekadvocate.github.io/claudme/logo.png">
+<meta property="og:image" content="https://marekadvocate.github.io/claudme/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:url" content="https://marekadvocate.github.io/claudme/">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Claudme — your AI agents are a crime family">
+<meta name="twitter:description" content="One pixel crab per Claude Code session, crawling the edges of your screen.">
+<meta name="twitter:image" content="https://marekadvocate.github.io/claudme/og.png">
 <style>
   *,*::before,*::after{box-sizing:border-box}
   :root{
-    --bg:#0d0c0b; --panel:#171513; --panel2:#1d1a17;
-    --line:#3a342e; --line2:#2a2521;
-    --ink:#f3ece4; --dim:#a2968a; --faint:#6d635b;
-    --crab:#d97757; --gold:#e8b04b;
+    /* A 1995 system palette, warmed slightly and desaturated so a full screen of
+       it is comfortable on a modern display. Bevels are real: highlight top-left,
+       shadow bottom-right, two pixels deep. */
+    --desk:#0d6e6e; --desk2:#0a5757;
+    --face:#d7d3cb; --hi:#fffefb; --lt:#eceae4; --sh:#8d877f; --dk:#3f3b36;
+    --field:#fdfcf9;
+    --title1:#1b1b6e; --title2:#3d7fc4;
+    --bg:#0d6e6e; --panel:#d7d3cb; --panel2:#e6e3dc;
+    --line:#8d877f; --line2:#b8b2a9;
+    --ink:#151311; --dim:#4b4640; --faint:#6f6960;
+    --crab:#b4441c; --gold:#8a6412;
     --font:ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,sans-serif;
     --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,monospace;
   }
@@ -186,17 +201,17 @@
      whole subject lives along the edges of a display. Anything narrow — phones, and
      anyone who prefers reduced motion — keeps ordinary vertical scrolling, because
      sideways on a phone is miserable. */
-  @media (min-width:900px) and (prefers-reduced-motion:no-preference){
+  @media (prefers-reduced-motion:no-preference){
     html,body{height:100%;overflow:hidden}
     .track{
-      display:flex;height:100vh;overflow-x:auto;overflow-y:hidden;
+      display:flex;height:calc(100vh - 38px);overflow-x:auto;overflow-y:hidden;
       scroll-snap-type:x mandatory;scroll-behavior:smooth;
       scrollbar-width:thin;scrollbar-color:var(--line) transparent
     }
     .track::-webkit-scrollbar{height:10px}
     .track::-webkit-scrollbar-thumb{background:var(--line);border-radius:5px}
     .track > header,.track > section,.track > footer{
-      flex:0 0 100vw;height:100vh;overflow-y:auto;scroll-snap-align:start;
+      flex:0 0 100vw;height:100%;overflow-y:auto;scroll-snap-align:start;
       display:flex;flex-direction:column;justify-content:center;padding:1.25rem 0
     }
     .track > header{justify-content:flex-start;padding-top:clamp(1.5rem,4vh,3rem);overflow:hidden}
@@ -215,16 +230,131 @@
     }
     @keyframes nudge{0%,100%{transform:translateX(0)}50%{transform:translateX(5px)}}
   }
-  @media not all and (min-width:900px){ .hint{display:none} }
+  .hint{display:none}
   @media (prefers-reduced-motion:reduce){ .crab{transition:none!important} }
+  /* ================= the page is a desktop =================
+     Every panel is a window sitting on it: two-pixel bevels, a real title bar,
+     and a taskbar along the bottom that doubles as the horizontal nav. */
+  body{
+    background:
+      radial-gradient(120% 90% at 50% 0%, var(--desk) 0%, var(--desk2) 100%);
+    color:var(--ink);
+  }
+  .bevel-out{
+    border:2px solid;border-color:var(--hi) var(--dk) var(--dk) var(--hi);
+    box-shadow:inset 1px 1px 0 var(--lt), inset -1px -1px 0 var(--sh);
+  }
+  .bevel-in{
+    border:2px solid;border-color:var(--dk) var(--hi) var(--hi) var(--dk);
+    box-shadow:inset 1px 1px 0 var(--sh), inset -1px -1px 0 var(--lt);
+  }
+
+  /* --- window --- */
+  .track > header > .wrap,
+  .track > section > .wrap,
+  .track > footer > .wrap{
+    position:relative;background:var(--face);padding:2.35rem 1.5rem 1.4rem;
+    border:2px solid;border-color:var(--hi) var(--dk) var(--dk) var(--hi);
+    box-shadow:inset 1px 1px 0 var(--lt), inset -1px -1px 0 var(--sh),
+               6px 6px 0 rgba(0,0,0,.22);
+    border-radius:0;
+  }
+  /* title bar and its buttons, drawn without touching the markup */
+  .track > * > .wrap::before{
+    content:attr(data-w);position:absolute;left:3px;right:3px;top:3px;height:26px;
+    display:flex;align-items:center;padding:0 .55rem;
+    background:linear-gradient(90deg,var(--title1),var(--title2));
+    color:#fff;font:700 .78rem/1 var(--font);letter-spacing:.02em;
+  }
+  .track > * > .wrap::after{
+    content:"_  □  ✕";position:absolute;right:6px;top:6px;height:20px;
+    display:flex;align-items:center;padding:0 .45rem;
+    background:var(--face);color:var(--ink);
+    font:700 .66rem/1 var(--mono);letter-spacing:.32em;
+    border:1px solid;border-color:var(--hi) var(--dk) var(--dk) var(--hi);
+  }
+
+  h1,h2,h3{color:var(--ink)}
+  .lede,.card p{color:var(--dim)}
+  .note{color:var(--faint)}
+  .eyebrow{color:var(--crab)}
+
+  /* --- system controls --- */
+  .btn,.controls button{
+    border-radius:0;background:var(--face);color:var(--ink);
+    border:2px solid;border-color:var(--hi) var(--dk) var(--dk) var(--hi);
+    box-shadow:inset 1px 1px 0 var(--lt), inset -1px -1px 0 var(--sh);
+    transition:none;
+  }
+  .btn:hover,.controls button:hover{transform:none;color:var(--ink);border-color:var(--hi) var(--dk) var(--dk) var(--hi);background:var(--lt)}
+  .btn:active,.controls button:active{
+    transform:none;border-color:var(--dk) var(--hi) var(--hi) var(--dk);
+    box-shadow:inset 1px 1px 0 var(--sh), inset -1px -1px 0 var(--lt);
+  }
+  .btn-p{background:var(--crab);color:#fff}
+  .btn-p:hover{background:#c94d20;filter:none}
+  .tog .box{border-radius:0;background:var(--field);
+    border:2px solid;border-color:var(--dk) var(--hi) var(--hi) var(--dk);box-shadow:none}
+  .tog.on .box{background:var(--field);color:var(--ink)}
+  .tog{color:var(--dim)} .tog.on{color:var(--ink)}
+  .controls.modes{border-bottom:1px solid var(--sh)}
+
+  /* --- fields, cards, tables --- */
+  .card{
+    background:var(--panel2);border-radius:0;
+    border:2px solid;border-color:var(--hi) var(--dk) var(--dk) var(--hi);
+  }
+  table{background:var(--field)}
+  th{background:var(--face);color:var(--dim);
+     border-bottom:2px solid;border-color:transparent transparent var(--sh) transparent}
+  td{border-bottom:1px solid var(--line2)}
+  td:last-child{color:var(--dim)}
+  pre.code{background:#101014;color:#e8e6e0;border-radius:0;
+    border:2px solid;border-color:var(--dk) var(--hi) var(--hi) var(--dk)}
+  .screen{border-radius:0;border:2px solid;border-color:var(--dk) var(--hi) var(--hi) var(--dk)}
+
+  /* --- taskbar: also the horizontal navigation --- */
+  .taskbar{
+    position:fixed;left:0;right:0;bottom:0;height:38px;z-index:40;
+    display:flex;align-items:center;gap:4px;padding:3px 5px;background:var(--face);
+    border-top:2px solid var(--hi);
+  }
+  .taskbar .start{
+    display:flex;align-items:center;gap:.4rem;padding:.3rem .7rem;flex:none;cursor:pointer;
+    font:800 .82rem/1 var(--font);color:var(--ink);background:var(--face);
+    border:2px solid;border-color:var(--hi) var(--dk) var(--dk) var(--hi);
+  }
+  .taskbar .start img{width:16px;height:16px;image-rendering:pixelated}
+  .taskbar .tasks{display:flex;gap:3px;overflow:hidden;flex:1}
+  .taskbar .tasks button{
+    flex:0 1 148px;min-width:44px;text-align:left;padding:.3rem .55rem;cursor:pointer;
+    font:600 .75rem/1 var(--font);color:var(--ink);background:var(--face);
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    border:2px solid;border-color:var(--hi) var(--dk) var(--dk) var(--hi);
+  }
+  .taskbar .tasks button[aria-current="true"]{
+    border-color:var(--dk) var(--hi) var(--hi) var(--dk);
+    background:repeating-linear-gradient(45deg,var(--lt) 0 2px,var(--face) 2px 4px);
+  }
+  .taskbar .tray{
+    flex:none;display:flex;align-items:center;gap:.45rem;padding:.3rem .7rem;
+    font:600 .75rem/1 var(--mono);color:var(--ink);
+    border:2px solid;border-color:var(--dk) var(--hi) var(--hi) var(--dk);
+  }
+  .taskbar .tray img{width:14px;height:14px;image-rendering:pixelated}
+  @media (max-width:640px){
+    .taskbar .start span{display:none}
+    .taskbar .tasks button{flex:0 0 44px}
+  }
+
 </style>
 </head>
 <body>
 <div class="track">
 
 <header>
-  <div class="wrap" style="text-align:left">
-    <div class="hero"><img class="logo" src="logo.svg" alt="Claudme">
+  <div data-w="Claudme.exe" class="wrap" style="text-align:left">
+    <div class="hero"><canvas class="logo" id="logo3d" aria-label="Claudme" role="img"></canvas>
     <div>
     <h1>Your AI agents are a crime family</h1>
     <p class="sub">
@@ -304,7 +434,7 @@
 </header>
 
 <section>
-  <div class="wrap"><div class="w"><div class="bar"><span class="dots"><i></i><i></i><i></i></span><span class="t">the problem</span><span class="fill"></span></div><div class="body">
+  <div data-w="dopamine.txt" class="wrap"><div class="w"><div class="bar"><span class="dots"><i></i><i></i><i></i></span><span class="t">the problem</span><span class="fill"></span></div><div class="body">
     <h2>Have you lost the dopamine from clauding?</h2>
     <p class="lede" style="font-size:1.12rem;color:var(--ink)">
       You used to <em>build</em> things. Now you type a sentence, watch a spinner and read a
@@ -336,7 +466,7 @@
 </section>
 
 <section>
-  <div class="wrap"><div class="w"><div class="bar"><span class="dots"><i></i><i></i><i></i></span><span class="t">reading the crabs</span><span class="fill"></span></div><div class="body">
+  <div data-w="states.hlp" class="wrap"><div class="w"><div class="bar"><span class="dots"><i></i><i></i><i></i></span><span class="t">reading the crabs</span><span class="fill"></span></div><div class="body">
     <h2>Every state means something</h2>
     <table>
       <tr><th>What you see</th><th>What it means</th></tr>
@@ -354,7 +484,7 @@
 </section>
 
 <section>
-  <div class="wrap"><div class="w"><div class="bar"><span class="dots"><i></i><i></i><i></i></span><span class="t">the family</span><span class="fill"></span></div><div class="body">
+  <div data-w="family.db" class="wrap"><div class="w"><div class="bar"><span class="dots"><i></i><i></i><i></i></span><span class="t">the family</span><span class="fill"></span></div><div class="body">
     <h2>Ranks are earned, not assigned</h2>
     <p class="lede">
       Every session is a made man with a stable name — the same session always gets the
@@ -377,7 +507,7 @@
 </section>
 
 <section id="install">
-  <div class="wrap"><div class="w"><div class="bar"><span class="dots"><i></i><i></i><i></i></span><span class="t">install</span><span class="fill"></span></div><div class="body">
+  <div data-w="setup.exe" class="wrap"><div class="w"><div class="bar"><span class="dots"><i></i><i></i><i></i></span><span class="t">install</span><span class="fill"></span></div><div class="body">
     <h2>Two commands</h2>
     <p class="lede">Requires macOS 13+ and Xcode command line tools. No dependencies, no package manager.</p>
     <pre class="code">git clone https://github.com/marekadvocate/claudme.git
@@ -398,7 +528,7 @@ open build/Claudme.app</pre>
 </section>
 
 <section>
-  <div class="wrap"><div class="w"><div class="bar"><span class="dots"><i></i><i></i><i></i></span><span class="t">open source</span><span class="fill"></span></div><div class="body">
+  <div data-w="contribute.c" class="wrap"><div class="w"><div class="bar"><span class="dots"><i></i><i></i><i></i></span><span class="t">open source</span><span class="fill"></span></div><div class="body">
     <h2>Come build a crab</h2>
     <p class="lede">
       MIT licensed and dependency-free — <code>./build.sh</code> is the entire build system,
@@ -423,7 +553,7 @@ open build/Claudme.app</pre>
 </section>
 
 <section id="support">
-  <div class="wrap"><div class="w"><div class="bar"><span class="dots"><i></i><i></i><i></i></span><span class="t">support</span><span class="fill"></span></div><div class="body">
+  <div data-w="porsche.fnd" class="wrap"><div class="w"><div class="bar"><span class="dots"><i></i><i></i><i></i></span><span class="t">support</span><span class="fill"></span></div><div class="body">
     <h2>Buy me a Porsche</h2>
     <p class="lede">
       Claudme is free and always will be. But a man can dream, and the dream is German.
@@ -448,7 +578,7 @@ open build/Claudme.app</pre>
 </section>
 
 <section id="updates">
-  <div class="wrap"><div class="w"><div class="bar"><span class="dots"><i></i><i></i><i></i></span><span class="t">latest updates</span><span class="fill"></span></div><div class="body">
+  <div data-w="changelog.log" class="wrap"><div class="w"><div class="bar"><span class="dots"><i></i><i></i><i></i></span><span class="t">latest updates</span><span class="fill"></span></div><div class="body">
     <h2>Shipped recently</h2>
     <p class="lede">
       Pulled live from the repo, so this is never out of date.
@@ -463,7 +593,7 @@ open build/Claudme.app</pre>
 </section>
 
 <section id="disclaimer">
-  <div class="wrap"><div class="w"><div class="bar"><span class="dots"><i></i><i></i><i></i></span><span class="t">claudme</span><span class="fill"></span></div><div class="body">
+  <div data-w="legal.txt" class="wrap"><div class="w"><div class="bar"><span class="dots"><i></i><i></i><i></i></span><span class="t">claudme</span><span class="fill"></span></div><div class="body">
     <div style="background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--crab);
                 border-radius:12px;padding:1.5rem 1.7rem;max-width:70ch">
       <p style="margin:0 0 .8rem;font:600 .78rem/1 var(--mono);letter-spacing:.14em;
@@ -488,7 +618,7 @@ open build/Claudme.app</pre>
 </section>
 
 <footer>
-  <div class="wrap">
+  <div data-w="about.nfo" class="wrap">
     <p>
       Built by <a href="https://github.com/marekadvocate">Marek Podhorsky</a> ·
       <a href="https://github.com/marekadvocate/claudme">Source</a> · MIT ·
@@ -503,6 +633,11 @@ open build/Claudme.app</pre>
 
 </div>
 <div class="hint">scroll →</div>
+<div class="taskbar">
+  <button class="start" id="startBtn" type="button"><img src="logo.svg" alt=""><span>Start</span></button>
+  <div class="tasks" id="tasks"></div>
+  <div class="tray"><img src="logo.svg" alt=""><span id="trayClock">--:--</span></div>
+</div>
 <script>
 (() => {
   // crabs scale with the stage — five 3px-grid crabs would swamp a phone
@@ -981,6 +1116,190 @@ open build/Claudme.app</pre>
             border:1px solid var(--line);${style}">${done ? '✓ ' : ''}${label}</span>`;
   }).join('');
 })();
+/* ---------- hero mark: a real rotating voxel model that morphs between shapes ----------
+   Not the isometric painter used elsewhere — this one rotates, so faces have to be
+   culled and depth-sorted per frame. Shapes are voxel sets padded to a common length
+   so every voxel has somewhere to fly to during a morph. */
+(function logo3d(){
+  const cv = document.getElementById('logo3d');
+  if (!cv) return;
+  const g = cv.getContext('2d');
+  const CRAB = '#c2673f', HAT = '#3b3532', EYE = '#141110';
+
+  const grid = (cells, colour, depth = 3) => {
+    const out = [];
+    for (const [c, r] of cells)
+      for (let z = 0; z < depth; z++) out.push({ x: c - 5, y: -r - 1, z: z - 1, c: colour });
+    return out;
+  };
+
+  function crab(){
+    const shell = [];
+    for (let x = 1; x <= 9; x++){ shell.push([x, 0]); shell.push([x, 1]); }
+    for (let x = 0; x <= 10; x++) shell.push([x, 2]);
+    for (let x = 0; x <= 10; x++) if (x !== 2 && x !== 8) shell.push([x, 3]);
+    const legs = [[1,4],[3,4],[7,4],[9,4],[1,5],[3,5],[7,5],[9,5],[2,4],[4,4],[6,4],[8,4]];
+    const hat  = [[4,-3],[6,-3],[3,-2],[4,-2],[5,-2],[6,-2],[7,-2],
+                  [1,-1],[2,-1],[3,-1],[4,-1],[5,-1],[6,-1],[7,-1],[8,-1],[9,-1]];
+    return [...grid(shell, CRAB), ...grid(legs, CRAB), ...grid(hat, HAT), ...grid([[2,3],[8,3]], EYE)];
+  }
+
+  function block(){                       // the Claude mark: a plain cube
+    const out = [];
+    for (let x = 0; x < 6; x++) for (let y = 0; y < 6; y++) for (let z = 0; z < 6; z++)
+      if (x===0||x===5||y===0||y===5||z===0||z===5) out.push({x:x-2.5,y:y-2.5,z:z-2.5,c:CRAB});
+    return out;
+  }
+
+  function fedora(){                      // brim plus crown, the family hat
+    const out = [];
+    for (let x = -5; x <= 5; x++) for (let z = -5; z <= 5; z++)
+      if (x*x + z*z <= 26) out.push({ x, y: -1, z, c: HAT });
+    for (let x = -3; x <= 3; x++) for (let z = -3; z <= 3; z++) for (let y = 0; y <= 3; y++)
+      if (x*x + z*z <= 10) out.push({ x, y, z, c: y === 0 ? CRAB : HAT });
+    return out;
+  }
+
+  const shapes = [crab(), fedora(), block()];
+  const N = Math.max(...shapes.map(s => s.length));
+  // Pad short shapes by folding extra voxels back onto existing ones: duplicates land
+  // on top of each other, so the silhouette is unchanged but the counts line up.
+  for (const s of shapes) { const base = s.length; while (s.length < N) s.push(s[s.length % base]); }
+
+  const FACES = [
+    { n: [ 0, 0, 1], v: [[-1,-1, 1],[ 1,-1, 1],[ 1, 1, 1],[-1, 1, 1]] },
+    { n: [ 0, 0,-1], v: [[ 1,-1,-1],[-1,-1,-1],[-1, 1,-1],[ 1, 1,-1]] },
+    { n: [ 1, 0, 0], v: [[ 1,-1, 1],[ 1,-1,-1],[ 1, 1,-1],[ 1, 1, 1]] },
+    { n: [-1, 0, 0], v: [[-1,-1,-1],[-1,-1, 1],[-1, 1, 1],[-1, 1,-1]] },
+    { n: [ 0, 1, 0], v: [[-1, 1, 1],[ 1, 1, 1],[ 1, 1,-1],[-1, 1,-1]] },
+    { n: [ 0,-1, 0], v: [[-1,-1,-1],[ 1,-1,-1],[ 1,-1, 1],[-1,-1, 1]] },
+  ];
+
+  const rot = (p, yaw, pitch) => {
+    const cy = Math.cos(yaw),  sy = Math.sin(yaw);
+    const cp = Math.cos(pitch), sp = Math.sin(pitch);
+    const x = p[0]*cy + p[2]*sy, z0 = -p[0]*sy + p[2]*cy;
+    return [x, p[1]*cp - z0*sp, p[1]*sp + z0*cp];
+  };
+  const shade = (hex, f) => {
+    const n = parseInt(hex.slice(1), 16);
+    const m = v => Math.max(0, Math.min(255, Math.round(v * f)));
+    return `rgb(${m(n>>16&255)},${m(n>>8&255)},${m(n&255)})`;
+  };
+  const ease = t => t < .5 ? 4*t*t*t : 1 - Math.pow(-2*t + 2, 3) / 2;
+
+  let from = 0, to = 0, morph = 1, hold = 0;
+  const DPR = Math.min(2, devicePixelRatio || 1);
+
+  function size(){
+    const r = cv.getBoundingClientRect();
+    const w = Math.max(1, Math.round(r.width)), h = Math.round(w * 1.05);
+    cv.style.height = h + 'px';
+    cv.width = w * DPR; cv.height = h * DPR;
+  }
+  size();
+  addEventListener('resize', size);
+
+  let t0 = performance.now();
+  function frame(now){
+    const dt = Math.min(.05, (now - t0) / 1000); t0 = now;
+    if (morph >= 1) {
+      hold += dt;
+      if (hold > 2.6) { hold = 0; morph = 0; from = to; to = (to + 1) % shapes.length; }
+    } else {
+      morph = Math.min(1, morph + dt / 1.1);
+    }
+
+    const W = cv.width, H = cv.height;
+    g.clearRect(0, 0, W, H);
+    const yaw = now / 1400, pitch = .48 + Math.sin(now / 2600) * .12;
+    const k = ease(morph), A = shapes[from], B = shapes[to];
+    const s = Math.min(W, H) / 15, half = s / 2;
+
+    const quads = [];
+    for (let i = 0; i < N; i++) {
+      const a = A[i], b = B[i];
+      const cx = a.x + (b.x - a.x) * k, cy2 = a.y + (b.y - a.y) * k, cz = a.z + (b.z - a.z) * k;
+      const colour = k < .5 ? a.c : b.c;
+      const c = rot([cx, cy2, cz], yaw, pitch);
+      for (const f of FACES) {
+        const n = rot(f.n, yaw, pitch);
+        if (n[2] <= 0.001) continue;                     // back face
+        const pts = f.v.map(v => {
+          const q = rot([cx + v[0]/2, cy2 + v[1]/2, cz + v[2]/2], yaw, pitch);
+          return [W/2 + q[0]*s, H/2 - q[1]*s];
+        });
+        quads.push({ d: c[2], pts, fill: shade(colour, .62 + n[2]*.28 + Math.max(0, n[1])*.22) });
+      }
+    }
+    quads.sort((p, q) => p.d - q.d);
+    for (const q of quads) {
+      g.beginPath();
+      g.moveTo(q.pts[0][0], q.pts[0][1]);
+      for (let i = 1; i < 4; i++) g.lineTo(q.pts[i][0], q.pts[i][1]);
+      g.closePath();
+      g.fillStyle = q.fill; g.fill();
+      g.strokeStyle = q.fill; g.lineWidth = 1; g.stroke();   // hides seams between faces
+    }
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+
+/* ---------- taskbar: one button per window, and it drives the horizontal track ---------- */
+(function taskbar(){
+  const track = document.querySelector('.track');
+  const host  = document.getElementById('tasks');
+  const clock = document.getElementById('trayClock');
+  if (!host) return;
+
+  const panels = [...document.querySelectorAll('.track > header, .track > section, .track > footer')];
+  const buttons = panels.map((panel, i) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = (panel.querySelector('.wrap') || {}).dataset?.w || `window ${i+1}`;
+    b.addEventListener('click', () => {
+      // Horizontal when the track is active, plain anchor scrolling otherwise.
+      if (track && track.scrollWidth > track.clientWidth + 4) {
+        track.scrollTo({ left: panel.offsetLeft, behavior: 'smooth' });
+      } else {
+        panel.scrollIntoView({ behavior: 'smooth' });
+      }
+    });
+    host.appendChild(b);
+    return b;
+  });
+
+  const mark = () => {
+    let active = 0;
+    if (track && track.scrollWidth > track.clientWidth + 4) {
+      active = Math.round(track.scrollLeft / Math.max(1, track.clientWidth));
+    } else {
+      const mid = innerHeight / 2;
+      panels.forEach((p, i) => { if (p.getBoundingClientRect().top <= mid) active = i; });
+    }
+    active = Math.max(0, Math.min(buttons.length - 1, active));
+    buttons.forEach((b, i) => b.setAttribute('aria-current', i === active ? 'true' : 'false'));
+  };
+  (track || window).addEventListener('scroll', mark, { passive: true });
+  addEventListener('resize', mark);
+  mark();
+
+  const tick = () => {
+    const d = new Date();
+    clock.textContent = `${d.getHours()}`.padStart(2,'0') + ':' + `${d.getMinutes()}`.padStart(2,'0');
+  };
+  tick(); setInterval(tick, 20000);
+
+  document.getElementById('startBtn').addEventListener('click', () => {
+    const t = document.querySelector('#install');
+    if (!t) return;
+    if (track && track.scrollWidth > track.clientWidth + 4) track.scrollTo({ left: t.offsetLeft, behavior:'smooth' });
+    else t.scrollIntoView({ behavior:'smooth' });
+  });
+})();
+
 </script>
+
 </body>
 </html>
