@@ -1564,7 +1564,10 @@ final class PetView: NSView {
     private func applyDance() {
         guard dancing else { return }
         let b = danceBeat
-        buildDanceCubes()
+        // Only 2D shatters. In an isometric view, what's in front of what is decided when
+        // the image is composed; once the columns move, the layer order no longer matches
+        // the geometry and the crab collapses into a jumble. 3D dances as a whole body.
+        if !Self.voxelMode { buildDanceCubes() }
 
         func anim(_ path: String, _ from: Double, _ to: Double,
                   _ dur: Double, offset: Double = 0,
