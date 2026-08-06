@@ -12,6 +12,9 @@ and jump you to the right terminal when you click them.
 
 Native Swift. No Electron. No permissions. ~3 MB.
 
+**An independent community project — not affiliated with Anthropic.**
+[See the full notice](#not-an-anthropic-product).
+
 </div>
 
 ---
@@ -160,10 +163,17 @@ MIT — see [LICENSE](LICENSE).
 
 ---
 
-<div align="center">
-<sub>
+## Not an Anthropic product
 
-Works with **Claude Code**. Not affiliated with, endorsed by, or sponsored by Anthropic.
+Claudme is an independent, unofficial, community-built tool. It is **not made,
+published, endorsed, sponsored or supported by Anthropic PBC**, and has no affiliation
+with them of any kind.
 
-</sub>
-</div>
+"Anthropic", "Claude" and "Claude Code" are trademarks of Anthropic PBC. They appear
+here only to state truthfully which software Claudme works with. Any resemblance in the
+name is unintentional and implies no connection or endorsement.
+
+Claudme reads Claude Code's local session files on your own machine. It sends nothing
+anywhere, is not a client for any Anthropic service, and does not use their API.
+**Please do not contact Anthropic about this project** — open an issue
+[here](https://github.com/marekadvocate/claudme/issues) instead.
