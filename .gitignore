@@ -1,2 +1,6 @@
 build/
 .DS_Store
+
+# rendered promo clips — regenerate with promo/render.sh
+promo/*.mp4
+promo/frames-*
