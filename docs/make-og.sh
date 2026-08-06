@@ -9,5 +9,5 @@ trap 'kill $SRV 2>/dev/null' EXIT
 sleep 1
 "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new --disable-gpu \
   --hide-scrollbars --window-size=1200,630 --virtual-time-budget=3500 \
-  --screenshot="$PWD/og.png" "http://127.0.0.1:8971/" 2>/dev/null
+  --screenshot="$PWD/og.png" "http://127.0.0.1:8971/?og=1" 2>/dev/null
 echo "og.png written ($(wc -c < og.png) bytes)"

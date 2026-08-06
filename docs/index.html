@@ -494,6 +494,20 @@
   .screen pre,.screen .win pre{font-family:var(--mono)}
   .deskcredit{font-family:var(--mono)}
 
+  /* ---- ?og : the share card ----
+     Strips the page down to the demo so the card is the product and nothing else.
+     Still the real page, so the card can never drift from what people land on. */
+  body.ogshot .hero,
+  body.ogshot .cta,
+  body.ogshot .shuffle-hint,
+  body.ogshot .deskcredit,
+  body.ogshot .track > section,
+  body.ogshot .track > footer{display:none!important}
+  body.ogshot .track > header{height:100dvh;padding:0}
+  body.ogshot .track > header > .wrap{padding:0;height:100%}
+  body.ogshot .track > header .stage{margin:0;width:100%;margin-left:0;transform:none}
+  body.ogshot .track > header .screen{height:100dvh;min-height:0}
+
   /* ==== THEME:START ==== After Hours — The family works at night: a near-black desk lit by one warm lamp overhead, charcoal windows set in bone-warm type, and the crab's terracotta as the only colour in the room. */
   :root{
     --desk:#0a0908; --desk2:#050404;
@@ -1515,6 +1529,9 @@ open build/Claudme.app</pre>
   requestAnimationFrame(frame);
 })();
 
+
+/* the OG capture loads the page with ?og so the card is the demo alone */
+if (new URLSearchParams(location.search).has('og')) document.body.classList.add('ogshot');
 
 </script>
 
