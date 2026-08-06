@@ -56,6 +56,8 @@ final class PetManager {
     private(set) var pets: [String: PetView] = [:]
     private(set) var lastSessions: [SessionInfo] = []
     private var tickTimer: Timer?
+    private let audio = AudioSense()
+    private(set) var musicPlaying = false
 
     var onCountChanged: ((Int) -> Void)?
 
@@ -79,6 +81,14 @@ final class PetManager {
         }
         RunLoop.main.add(t, forMode: .common)
         tickTimer = t
+
+        // when music starts anywhere on the Mac, the whole family dances
+        audio.onChange = { [weak self] playing in
+            guard let self else { return }
+            self.musicPlaying = playing
+            for pet in self.pets.values { pet.setDancing(playing) }
+        }
+        audio.start()
     }
 
     // MARK: - Overlays
@@ -226,6 +236,7 @@ final class PetManager {
         overlay.view.addSubview(pet)
         pets[info.sessionId] = pet
         petOverlay[info.sessionId] = idx
+        if musicPlaying { pet.setDancing(true) }   // joins a party already in progress
     }
 
     private func despawn(_ pet: PetView) {

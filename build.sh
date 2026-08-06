@@ -7,7 +7,7 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 
 swiftc -O Sources/*.swift \
   -o "$APP/Contents/MacOS/Claudme" \
-  -framework AppKit -framework Network -framework QuartzCore
+  -framework AppKit -framework Network -framework QuartzCore -framework CoreAudio
 
 cp Info.plist "$APP/Contents/Info.plist"
 

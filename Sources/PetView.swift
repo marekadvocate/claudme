@@ -84,7 +84,8 @@ final class PetView: NSView {
     private let body = CALayer()
     private let shell = CAShapeLayer()      // Clawd's body pixels
     private let legs = CAShapeLayer()       // two-frame scuttle
-    private let cap = CAShapeLayer()        // colored cap = stable session identity
+    private let cap = CAShapeLayer()        // colored headwear = stable session identity
+    private let accent = CAShapeLayer()     // era markings on the shell
     private let eyeLeft = CALayer()
     private let eyeRight = CALayer()
     private let glintLeft = CALayer()
@@ -198,9 +199,15 @@ final class PetView: NSView {
         legs.fillColor = Self.claudeOrange.cgColor
         body.addSublayer(legs)
 
-        // pixel baseball cap on the head, in the session's identity color
+        // era markings on the shell, under the hat
+        accent.frame = body.bounds
+        accent.path = Self.pixelPath(cells: Self.accentCells(for: Naming.era(for: info.name)))
+        accent.fillColor = NSColor(white: 1, alpha: 0.22).cgColor
+        body.addSublayer(accent)
+
+        // headwear for this crab's era, in the session's identity colour
         cap.frame = body.bounds
-        cap.path = Self.pixelPath(cells: Self.capCells)
+        cap.path = Self.pixelPath(cells: Self.hatCells(for: Naming.era(for: info.name)))
         cap.fillColor = Self.capColor(for: info.name).cgColor
         body.addSublayer(cap)
 
@@ -217,7 +224,7 @@ final class PetView: NSView {
             body.addSublayer(glint)
         }
 
-        for l in [layer!, body, shell, legs, cap, eyeLeft, eyeRight, glintLeft, glintRight] {
+        for l in [layer!, body, shell, legs, accent, cap, eyeLeft, eyeRight, glintLeft, glintRight] {
             l.contentsScale = scaleFactor
         }
 
@@ -264,15 +271,58 @@ final class PetView: NSView {
         return c
     }()
 
-    /// fedora: narrow crown with a pinch, over a wide flat brim
-    /// (negative rows extend above the TUI art's grid)
-    private static let capCells: [(Int, Int)] = {
+    /// Markings on the shell itself, so an era still reads when the hat is hidden by
+    /// a bubble or clipped at a corner. Drawn in a lighter tint of the body.
+    static func accentCells(for era: Era) -> [(Int, Int)] {
+        switch era {
+        case .roman:        return [(1, 2), (2, 2), (3, 3), (4, 3)]          // toga sash
+        case .medieval:     return [(1, 2), (3, 2), (5, 2), (7, 2), (9, 2),  // chainmail
+                                    (4, 3), (6, 3)]
+        case .renaissance:  return [(0, 2), (1, 2), (9, 2), (10, 2)]         // ruff collar
+        case .prohibition:  return [(1, 2), (1, 3), (4, 2), (4, 3),          // pinstripes
+                                    (7, 2), (7, 3)]
+        case .yakuza:       return [(0, 2), (0, 3), (10, 2), (10, 3)]        // irezumi sleeves
+        case .syndicate:    return [(3, 2), (4, 2), (6, 2), (7, 2), (5, 3)]  // circuit trace
+        }
+    }
+
+    /// Headwear, one shape per era. Negative rows sit above the body grid.
+    ///
+    /// The *shape* carries the era; the *colour* stays the crab's own identity colour,
+    /// so you can still tell two crabs apart at a glance even in the same era.
+    static func hatCells(for era: Era) -> [(Int, Int)] {
         var c: [(Int, Int)] = []
-        c.append((4, -3)); c.append((6, -3))     // pinched crown top
-        for x in 3...7 { c.append((x, -2)) }     // crown
-        for x in 1...9 { c.append((x, -1)) }     // brim, both sides
+        switch era {
+        case .roman:            // laurel wreath: two leaf clusters, open at the top
+            for x in [1, 2, 3, 7, 8, 9] { c.append((x, -1)) }
+            c.append((0, -1)); c.append((10, -1))
+            c.append((2, -2)); c.append((8, -2))
+
+        case .medieval:         // spiked crown on a band
+            for x in 2...8 { c.append((x, -1)) }
+            for x in [2, 4, 6, 8] { c.append((x, -2)) }
+            c.append((4, -3)); c.append((6, -3))
+
+        case .renaissance:      // flat cap tilted up at the back, with a plume
+            for x in 2...8 { c.append((x, -1)) }
+            for x in 5...7 { c.append((x, -2)) }
+            c.append((8, -3))
+
+        case .prohibition:      // the classic fedora: pinched crown, wide brim
+            c.append((4, -3)); c.append((6, -3))
+            for x in 3...7 { c.append((x, -2)) }
+            for x in 1...9 { c.append((x, -1)) }
+
+        case .yakuza:           // hachimaki headband, knot trailing to one side
+            for x in 1...9 { c.append((x, -1)) }
+            c.append((10, -1)); c.append((10, -2))
+
+        case .syndicate:        // cyber visor with a single antenna
+            for x in 1...9 { c.append((x, -1)) }
+            c.append((5, -2)); c.append((5, -3)); c.append((6, -3))
+        }
         return c
-    }()
+    }
 
     private static let legCellsA: [(Int, Int)] = [(1, 4), (3, 4), (7, 4), (9, 4),
                                                   (1, 5), (3, 5), (7, 5), (9, 5)]
@@ -652,6 +702,7 @@ final class PetView: NSView {
         let from = (body.presentation() ?? body).value(forKeyPath: "transform.rotation.z")
         currentAngle = a
         updateBodyTransform(animated: animated, keyPath: "transform.rotation.z", from: from)
+        applyDance()   // re-centre the sway on the new edge angle
     }
 
     private func spawnPop() {
@@ -670,6 +721,7 @@ final class PetView: NSView {
         if perimT < 0 { placeOnPerimeter() }
         purgeExpiredBabies(now: now)
         if compactUntil > 0 && now > compactUntil { compactEnd() }
+        if dancing { return }   // the music has their full attention
 
         if state == .celebrating && now > celebrateUntil {
             applyState(mappedState(), animated: true)
@@ -1083,6 +1135,49 @@ final class PetView: NSView {
         return d
     }
 
+    // MARK: - Dancing (something on this Mac is playing sound)
+
+    private var dancing = false
+    private var danceBeat = 0.42
+
+    func setDancing(_ on: Bool) {
+        guard on != dancing else { return }
+        dancing = on
+        if on {
+            slideRemaining = 0
+            danceBeat = 0.42 + Double.random(in: -0.05...0.05)   // nobody dances in lockstep
+            applyDance()
+        } else {
+            body.removeAnimation(forKey: "danceSway")
+            body.removeAnimation(forKey: "danceBob")
+            updateBodyTransform(animated: false, keyPath: "transform.rotation.z", from: nil)
+        }
+    }
+
+    /// The sway has to swing *around* whatever angle this edge demands, otherwise it
+    /// overwrites the rotation that keeps the crab's legs on the surface.
+    private func applyDance() {
+        guard dancing else { return }
+        let sway = CABasicAnimation(keyPath: "transform.rotation.z")
+        sway.fromValue = currentAngle - 0.17
+        sway.toValue = currentAngle + 0.17
+        sway.duration = danceBeat
+        sway.autoreverses = true
+        sway.repeatCount = .infinity
+        sway.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+        body.add(sway, forKey: "danceSway")
+
+        // local +y is "away from the surface", so this reads as jumping off it
+        let bob = CABasicAnimation(keyPath: "transform.translation.y")
+        bob.fromValue = 0
+        bob.toValue = 10
+        bob.duration = danceBeat / 2
+        bob.autoreverses = true
+        bob.repeatCount = .infinity
+        bob.timingFunction = CAMediaTimingFunction(name: .easeOut)
+        body.add(bob, forKey: "danceBob")
+    }
+
     private func smallHop() {
         let hop = CAKeyframeAnimation(keyPath: "transform.translation.y")
         hop.values = [0, 14, 0]
@@ -1100,7 +1195,7 @@ final class PetView: NSView {
     func addBaby(agentId: String) {
         guard babyLayers[agentId] == nil, babyLayers.count < Self.babySlots.count else { return }
         let slot = Self.babySlots[babyLayers.count]
-        let baby = Self.makeBaby(capColor: cap.fillColor)
+        let baby = Self.makeBaby(capColor: cap.fillColor, era: era)   // kids wear the family hat
         baby.position = CGPoint(x: 40 + slot, y: 31)   // feet on the parent's leg line
         body.addSublayer(baby)
         babyLayers[agentId] = baby
@@ -1137,7 +1232,7 @@ final class PetView: NSView {
         }
     }
 
-    private static func makeBaby(capColor: CGColor?) -> CALayer {
+    private static func makeBaby(capColor: CGColor?, era: Era) -> CALayer {
         let px: CGFloat = 3
         let group = CALayer()
         func shape(_ cells: [(Int, Int)], _ color: CGColor?) -> CAShapeLayer {
@@ -1149,7 +1244,7 @@ final class PetView: NSView {
         }
         group.addSublayer(shape(shellCells, claudeOrange.cgColor))
         group.addSublayer(shape(legCellsA, claudeOrange.cgColor))
-        group.addSublayer(shape(capCells, capColor ?? claudeOrange.cgColor))
+        group.addSublayer(shape(hatCells(for: era), capColor ?? claudeOrange.cgColor))
         group.addSublayer(shape([(2, 3), (8, 3)], inkColor.cgColor))   // eyes
         // excited toddler bob + wiggle
         let bob = CABasicAnimation(keyPath: "transform.translation.y")
