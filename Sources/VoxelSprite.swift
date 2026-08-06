@@ -132,6 +132,80 @@ enum VoxelSprite {
     }
 }
 
+// MARK: - Dance mode: one image per grid cell, so the cubes can move independently
+
+extension VoxelSprite {
+
+    /// Where a cell's voxel column lands on screen, before centring.
+    static func isoPoint(col: Int, row: Int, pixel: CGFloat) -> CGPoint {
+        let hw = pixel, hh = pixel / 2, hz = pixel
+        let y = depth - 1                       // anchor on the front-most voxel
+        return CGPoint(x: CGFloat(col - y) * hw,
+                       y: CGFloat(col + y) * hh + CGFloat(row) * hz)
+    }
+
+    private static var columnCache: [String: CGImage] = [:]
+
+    /// A single voxel column — the same picture for every cell of a given colour, so
+    /// a whole shattered crab costs only a handful of distinct images.
+    static func columnImage(color: NSColor, pixel: CGFloat) -> CGImage? {
+        let key = "\(color.hexish)|\(pixel)"
+        if let hit = columnCache[key] { return hit }
+
+        let hw = pixel, hh = pixel / 2, hz = pixel
+        let (top, left, right) = shadesPublic(color)
+        var faces: [(pts: [CGPoint], color: NSColor)] = []
+        var minX = CGFloat.infinity, minY = CGFloat.infinity
+        var maxX = -CGFloat.infinity, maxY = -CGFloat.infinity
+
+        for y in 0..<depth {
+            let sx = CGFloat(-y) * hw, sy = CGFloat(y) * hh
+            func push(_ pts: [CGPoint], _ c: NSColor) {
+                faces.append((pts, c))
+                for p in pts {
+                    minX = min(minX, p.x); maxX = max(maxX, p.x)
+                    minY = min(minY, p.y); maxY = max(maxY, p.y)
+                }
+            }
+            push([CGPoint(x: sx, y: sy - hh), CGPoint(x: sx + hw, y: sy),
+                  CGPoint(x: sx, y: sy + hh), CGPoint(x: sx - hw, y: sy)], top)
+            if y == depth - 1 {   // only the front column shows its side faces
+                push([CGPoint(x: sx - hw, y: sy), CGPoint(x: sx, y: sy + hh),
+                      CGPoint(x: sx, y: sy + hh + hz), CGPoint(x: sx - hw, y: sy + hz)], left)
+                push([CGPoint(x: sx + hw, y: sy), CGPoint(x: sx, y: sy + hh),
+                      CGPoint(x: sx, y: sy + hh + hz), CGPoint(x: sx + hw, y: sy + hz)], right)
+            }
+        }
+        faces.sort { $0.pts.map(\.y).max()! < $1.pts.map(\.y).max()! }
+
+        let scale = NSScreen.main?.backingScaleFactor ?? 2
+        let w = Int(ceil((maxX - minX) * scale)) + 2
+        let h = Int(ceil((maxY - minY) * scale)) + 2
+        guard w > 0, h > 0,
+              let ctx = CGContext(data: nil, width: w, height: h, bitsPerComponent: 8,
+                                  bytesPerRow: 0, space: CGColorSpaceCreateDeviceRGB(),
+                                  bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+        else { return nil }
+        ctx.scaleBy(x: scale, y: scale)
+        ctx.translateBy(x: 0, y: maxY - minY)
+        ctx.scaleBy(x: 1, y: -1)
+        ctx.translateBy(x: -minX, y: -minY)
+        for f in faces {
+            ctx.beginPath()
+            ctx.move(to: f.pts[0])
+            for p in f.pts.dropFirst() { ctx.addLine(to: p) }
+            ctx.closePath()
+            ctx.setFillColor(f.color.cgColor)
+            ctx.fillPath()
+        }
+        let img = ctx.makeImage()
+        if let img, columnCache.count < 64 { columnCache[key] = img }
+        return img
+    }
+
+    static func shadesPublic(_ c: NSColor) -> (NSColor, NSColor, NSColor) { shades(c) }
+}
+
 private extension NSColor {
     /// cheap stable key for the sprite cache
     var hexish: String {
