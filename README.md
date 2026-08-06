@@ -17,6 +17,16 @@ Native Swift · no Electron · no permissions · ~3 MB · MIT
 
 ---
 
+## Have you lost the dopamine from clauding?
+
+You used to *build* things. Now you type a sentence, watch a spinner, and read a diff.
+The work still ships — faster than ever — but the part that felt like something is gone.
+Six terminals, six spinners, nothing to look at.
+
+**Here comes the second stage.** Your agents stop being progress bars and become a crew:
+named, ranked, wearing colours you recognise, celebrating their own wins along the edge of
+your screen. Same output. The feeling comes back.
+
 ## Why
 
 If you run one agent, you don't need this. If you run six, you know the problem:
