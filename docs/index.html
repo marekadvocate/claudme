@@ -220,15 +220,22 @@
 <section>
   <div class="wrap">
     <p class="eyebrow">The problem</p>
-    <h2>Six agents running. Which one needs you?</h2>
+    <h2>AI coding got boring</h2>
+    <p class="lede">
+      Remember when writing software felt like something? Now you type a sentence, watch
+      a spinner, and read a diff. Six terminals, six spinners, nothing to look at. The
+      machine does the interesting part and you supervise a progress indicator.
+    </p>
     <blockquote>
-      You alt-tab through five terminals to find the one that finished. By the time you
-      find it, you've forgotten what you were doing.
+      And when one of them finally finishes, you alt-tab through five windows to find out
+      which. By the time you do, you've forgotten what you were doing.
     </blockquote>
     <p class="lede">
-      Claudme moves that question out of your working memory and into your peripheral
-      vision. The crabs live on the edges of your screen, so they never cover your work —
-      but you always know, without looking directly, who is busy and who is done.
+      Claudme fixes both halves of that. It moves the <b>which one needs me</b> question
+      out of your working memory and into your peripheral vision — the crabs live on the
+      edges of your screen, so they never cover your work, but you always know who's busy
+      and who's done. And it gives the whole thing a pulse again: your agents stop being
+      spinners and start being a crew you recognise by name.
     </p>
   </div>
 </section>
@@ -271,7 +278,7 @@
       <div class="card"><span class="ico">🎩</span><h3>Unique colours</h3><p>Each live crab wears a differently coloured fedora, matching its dot in the menubar. Learn them once and you never need the label.</p></div>
       <div class="card"><span class="ico">🍺</span><h3>A life of its own</h3><p>They greet each other in passing, take beer breaks, clink glasses with neighbours and do a stadium wave when the last busy session finishes.</p></div>
       <div class="card"><span class="ico">🖱️</span><h3>Click to jump</h3><p>Click a crab and the terminal running that session comes to the front. Right-click for its working directory and status.</p></div>
-      <div class="card"><span class="ico">🌍</span><h3>Speaks your language</h3><p>English, Slovak and Czech out of the box, written in the voice of a made man reporting to his boss. Adding one is a single pull request.</p></div>
+      <div class="card"><span class="ico">🌍</span><h3>Speaks your language</h3><p>Eighteen languages out of the box — each written in its own crime-fiction register, not translated. Adding one is a single pull request.</p></div>
     </div>
   </div>
 </section>
@@ -303,9 +310,19 @@ open build/Claudme.app</pre>
     <p class="eyebrow">Open source</p>
     <h2>Come build a crab</h2>
     <p class="lede">
-      MIT licensed and dependency-free — <code>./build.sh</code> is the entire build system.
-      The best first contributions are a new language, a new idle behaviour, or an era skin.
-      Everything you need is in <a href="https://github.com/marekadvocate/claudme/blob/master/CONTRIBUTING.md">CONTRIBUTING.md</a>.
+      MIT licensed and dependency-free — <code>./build.sh</code> is the entire build system,
+      there is no project file and no package manager. If you have Xcode command line
+      tools, you can build it.
+    </p>
+    <div class="grid">
+      <div class="card"><span class="ico">🌍</span><h3>Add a language</h3><p>One entry in <code>Quips.swift</code>. Don't translate the English — write what a mobster would actually say in your language. Eighteen so far.</p></div>
+      <div class="card"><span class="ico">🎭</span><h3>Add an idle behaviour</h3><p>Copy the shape of the beer break or the balloon ride. Keep it rare — anything seen more than a few times an hour becomes noise.</p></div>
+      <div class="card"><span class="ico">🏛️</span><h3>Add an era</h3><p>A given-name pool in <code>Naming.swift</code> plus headwear and shell markings in <code>PetView.swift</code>. Six exist; the timeline has room.</p></div>
+    </div>
+    <p class="lede">
+      The house rules are short: no image assets (every pixel is drawn in code), never
+      block Claude Code, and parse the session registry defensively. All of it is in
+      <a href="https://github.com/marekadvocate/claudme/blob/master/CONTRIBUTING.md">CONTRIBUTING.md</a>.
     </p>
     <div class="cta" style="justify-content:flex-start">
       <a class="btn btn-p" href="https://github.com/marekadvocate/claudme">★ Star on GitHub</a>
@@ -324,10 +341,11 @@ open build/Claudme.app</pre>
     <div class="fund">
       <div style="display:flex;justify-content:space-between;align-items:baseline">
         <b>🏎️ The Porsche Fund</b>
-        <span style="color:var(--faint);font-size:.85rem">goal €100,000</span>
+        <span style="color:var(--faint);font-size:.85rem">no ceiling</span>
       </div>
-      <div class="meter"><i id="bar"></i><span id="bartext">€0 of €100,000</span></div>
-      <div class="fundrow"><span>Every crab helps</span><span id="pct">0.0%</span></div>
+      <div class="meter"><i id="bar"></i><span id="bartext">€0</span></div>
+      <div class="fundrow"><span id="milestone">Next up: a coffee ☕</span><span id="pct">the fund is open</span></div>
+      <div id="ladder" style="display:flex;gap:.35rem;flex-wrap:wrap;margin-top:.9rem"></div>
 
       <div class="cta" style="justify-content:flex-start;margin-top:1.4rem">
         <a class="btn btn-p" href="https://github.com/sponsors/marekadvocate">💖 GitHub Sponsors</a>
@@ -572,13 +590,38 @@ open build/Claudme.app</pre>
   crabs[0].state = 'busy';
   crabs[4].state = 'sleep'; redraw(crabs[4]); say(crabs[4],'z Z', 999999);
 
-  // ---- porsche meter ----
-  const RAISED = 0, GOAL = 100000;
-  const pctVal = Math.min(100, RAISED/GOAL*100);
-  document.getElementById('bar').style.width = Math.max(0.4, pctVal) + '%';
-  document.getElementById('bartext').textContent =
-    `€${RAISED.toLocaleString('en-US')} of €${GOAL.toLocaleString('en-US')}`;
-  document.getElementById('pct').textContent = pctVal.toFixed(1) + '%';
+  // ---- porsche fund ----
+  // No fixed goal: the bar always fills toward the NEXT milestone, so the fund can
+  // never be "finished" and the last rung is deliberately unreachable.
+  const RAISED = 0;
+  const LADDER = [
+    [5, '☕ a coffee'], [100, '🔧 an oil change'], [400, '🛞 one tyre'],
+    [2500, '🪑 a seat'], [12000, '⚙️ a gearbox'], [25000, '🔩 the engine'],
+    [100000, '🏎️ the whole Porsche'], [Infinity, '🏁 a second one'],
+  ];
+  const euros = n => '€' + n.toLocaleString('en-US');
+
+  const reached = LADDER.filter(([amt]) => RAISED >= amt);
+  const nextIdx = Math.min(reached.length, LADDER.length - 1);
+  const [nextAmt, nextLabel] = LADDER[nextIdx];
+  const prevAmt = nextIdx === 0 ? 0 : LADDER[nextIdx - 1][0];
+  const span = (isFinite(nextAmt) ? nextAmt : prevAmt * 2) - prevAmt;
+  const pctVal = Math.min(100, Math.max(0, (RAISED - prevAmt) / span * 100));
+
+  document.getElementById('bar').style.width = Math.max(0.6, pctVal) + '%';
+  document.getElementById('bartext').textContent = euros(RAISED);
+  document.getElementById('milestone').textContent =
+    isFinite(nextAmt) ? `Next up: ${nextLabel} — ${euros(nextAmt)}` : `Next up: ${nextLabel}`;
+  document.getElementById('pct').textContent = 'the fund is open';
+
+  document.getElementById('ladder').innerHTML = LADDER.map(([amt, label], i) => {
+    const done = RAISED >= amt;
+    const style = done
+      ? 'background:var(--crab);color:#231208;border-color:transparent'
+      : (i === nextIdx ? 'border-color:var(--crab);color:var(--crab)' : 'color:var(--faint)');
+    return `<span style="font:600 .72rem var(--font);padding:.25rem .55rem;border-radius:6px;
+            border:1px solid var(--line);${style}">${done ? '✓ ' : ''}${label}</span>`;
+  }).join('');
 })();
 </script>
 </body>

@@ -62,6 +62,12 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         lang.submenu = langMenu
         menu.addItem(lang)
 
+        let voxel = NSMenuItem(title: "3D crabs", action: #selector(toggleVoxel), keyEquivalent: "")
+        voxel.target = self
+        voxel.state = PetView.voxelMode ? .on : .off
+        voxel.toolTip = "Render the family as isometric voxels, like the app icon"
+        menu.addItem(voxel)
+
         // Hooks
         let installed = HooksInstaller.isInstalled()
         let hooks = NSMenuItem(title: "Live reactions",
@@ -73,6 +79,18 @@ final class StatusItemController: NSObject, NSMenuDelegate {
             ? "Claude Code hooks are installed — click to remove them"
             : "Install Claude Code hooks so crabs react the instant a turn ends"
         menu.addItem(hooks)
+
+        menu.addItem(.separator())
+
+        let update = NSMenuItem(title: "Check for updates…", action: #selector(checkUpdates), keyEquivalent: "")
+        update.target = self
+        update.toolTip = "Pulls the latest source, rebuilds and relaunches"
+        menu.addItem(update)
+
+        let contribute = NSMenuItem(title: "Contribute on GitHub", action: #selector(openRepo), keyEquivalent: "")
+        contribute.target = self
+        contribute.toolTip = "New languages, idle behaviours and era skins are all welcome"
+        menu.addItem(contribute)
 
         menu.addItem(.separator())
         let quit = NSMenuItem(title: "Quit Claudme", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
@@ -131,6 +149,17 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     @objc private func pickLanguage(_ sender: NSMenuItem) {
         guard let raw = sender.representedObject as? String, let l = Lang(rawValue: raw) else { return }
         Quips.setLanguage(l)
+    }
+
+    @objc private func checkUpdates() { Updater.checkAndPrompt() }
+
+    @objc private func openRepo() {
+        NSWorkspace.shared.open(URL(string: "https://github.com/marekadvocate/claudme")!)
+    }
+
+    @objc private func toggleVoxel() {
+        PetView.setVoxelMode(!PetView.voxelMode)
+        manager.refreshRenderMode()
     }
 
     @objc private func installHooks() { runHookAction { try HooksInstaller.install() } }

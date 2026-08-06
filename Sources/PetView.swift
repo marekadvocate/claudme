@@ -86,6 +86,7 @@ final class PetView: NSView {
     private let legs = CAShapeLayer()       // two-frame scuttle
     private let cap = CAShapeLayer()        // colored headwear = stable session identity
     private let accent = CAShapeLayer()     // era markings on the shell
+    private let voxel = CALayer()           // 3D mode: the whole crab as one iso sprite
     private let eyeLeft = CALayer()
     private let eyeRight = CALayer()
     private let glintLeft = CALayer()
@@ -151,6 +152,49 @@ final class PetView: NSView {
     private var accessoryLayer: CAShapeLayer?
     private var satelliteLayer: CALayer?
     private var compactUntil: CFTimeInterval = 0
+
+    // MARK: - Render mode (flat pixels vs isometric voxels)
+
+    private static let voxelKey = "ClaudmeVoxelMode"
+    private(set) static var voxelMode = UserDefaults.standard.bool(forKey: voxelKey)
+
+    static func setVoxelMode(_ on: Bool) {
+        voxelMode = on
+        UserDefaults.standard.set(on, forKey: voxelKey)
+    }
+
+    /// Swaps between the flat pixel layers and the single voxel sprite.
+    func applyRenderMode() {
+        let on = Self.voxelMode
+        for l in [shell, legs, accent, cap] { l.isHidden = on }
+        for l in [eyeLeft, eyeRight, glintLeft, glintRight] { l.isHidden = on }
+        voxel.isHidden = !on
+        // the voxel crab is drawn from above, so it needs no ground shadow of its own
+        body.shadowOpacity = on ? 0.26 : 0.14
+        if on { refreshVoxel() }
+    }
+
+    private func refreshVoxel() {
+        guard Self.voxelMode else { return }
+        let capNS = cap.fillColor.map { NSColor(cgColor: $0) ?? Self.claudeOrange } ?? Self.claudeOrange
+        guard let img = VoxelSprite.image(bodyColor: modelKind.bodyColor,
+                                          capColor: capNS,
+                                          era: era,
+                                          legPhase: legPhase,
+                                          sleeping: state == .sleeping,
+                                          pixel: 4.5)
+        else { return }
+        let scale = NSScreen.main?.backingScaleFactor ?? 2
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        voxel.contents = img
+        voxel.contentsScale = scale
+        voxel.bounds = CGRect(x: 0, y: 0,
+                              width: CGFloat(img.width) / scale,
+                              height: CGFloat(img.height) / scale)
+        voxel.position = CGPoint(x: 40, y: 42)
+        CATransaction.commit()
+    }
 
     // MARK: - Made name ("Don Vito Opus")
 
@@ -228,6 +272,12 @@ final class PetView: NSView {
             l.contentsScale = scaleFactor
         }
 
+        // 3D mode draws the whole crab as one isometric sprite laid over the flat parts
+        voxel.frame = body.bounds
+        voxel.contentsGravity = .center
+        voxel.isHidden = true
+        body.addSublayer(voxel)
+
         // gentle breathing
         let breathe = CABasicAnimation(keyPath: "transform.scale")
         breathe.fromValue = 1.0
@@ -253,6 +303,7 @@ final class PetView: NSView {
         addSubview(bubble)
 
         placeOnPerimeter()
+        applyRenderMode()
         startBlinking()
         applyState(mappedState(), animated: false)
         spawnPop()
@@ -323,6 +374,11 @@ final class PetView: NSView {
         }
         return c
     }
+
+    // exposed so VoxelSprite can extrude the same geometry into 3D
+    static var shellCellsPublic: [(Int, Int)] { shellCells }
+    static var legCellsAPublic: [(Int, Int)] { legCellsA }
+    static var legCellsBPublic: [(Int, Int)] { legCellsB }
 
     private static let legCellsA: [(Int, Int)] = [(1, 4), (3, 4), (7, 4), (9, 4),
                                                   (1, 5), (3, 5), (7, 5), (9, 5)]
@@ -672,6 +728,7 @@ final class PetView: NSView {
         }
         nextDecisionAt = 0
         updateWired()
+        refreshVoxel()
     }
 
     // MARK: - Body transform (scale + edge rotation)
@@ -1025,6 +1082,7 @@ final class PetView: NSView {
         if phase != legPhase {
             legPhase = phase
             legs.path = phase == 0 ? Self.legsFrameA : Self.legsFrameB
+            refreshVoxel()
         }
     }
 

@@ -328,6 +328,11 @@ final class PetManager {
 
     // MARK: - Hook events
 
+    /// Re-render every crab after the flat/voxel switch is flipped.
+    func refreshRenderMode() {
+        for pet in pets.values { pet.applyRenderMode() }
+    }
+
     func handle(_ event: HookEvent) {
         // every hook event carries session context — keep the crab's look fresh
         if !event.sessionId.isEmpty, let pet = pets[event.sessionId] {

@@ -98,8 +98,28 @@ ride when bored, and do a stadium wave when the last busy session finishes.
 
 ## Languages
 
-English, Slovak and Czech, picked in the menubar. Defaults to your system language.
-Adding one is a single entry in [`Sources/Quips.swift`](Sources/Quips.swift) — PRs very welcome.
+Eighteen, picked in the menubar, defaulting to your system language:
+English, Slovak, Czech, German, Spanish, French, Hindi, Italian, Japanese, Korean,
+Dutch, Polish, Portuguese, Russian, Swedish, Turkish, Ukrainian, Chinese.
+
+None of them are translations — each was written in its own crime-fiction register, so
+the yakuza speak like yakuza. Adding one is a single entry in
+[`Sources/Quips.swift`](Sources/Quips.swift) — PRs very welcome.
+
+## Updating
+
+Menubar → **Check for updates…**. It compares your checkout against the remote and, if
+you agree, pulls, rebuilds and relaunches. If you have uncommitted changes it refuses
+and tells you, rather than touching your work. Or do it by hand:
+
+```bash
+git pull && ./build.sh
+```
+
+## 3D mode
+
+Menubar → **3D crabs** renders the family as isometric voxels — the same look as the
+app icon — instead of flat pixel art. Off by default.
 
 ## How it works
 
