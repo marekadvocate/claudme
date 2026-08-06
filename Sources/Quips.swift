@@ -4,7 +4,12 @@ import Foundation
 /// boss — you. These are not translations of the English: each language was written
 /// in its own crime-fiction register, so the jokes land for a native speaker.
 ///
-/// To add a language: add a case to `Lang` and an entry to `table`. Nothing else.
+/// Every language comes in two registers. `table` is the one a crab uses by default —
+/// the crime film you'd watch with your parents in the room. `slangTable` is the street
+/// version the same guy uses among his own: regional criminal argot, and it swears.
+///
+/// To add a language: add a case to `Lang` and an entry to `table`. A `slangTable` entry
+/// is optional — anything missing there falls back to the clean line.
 enum QuipKind {
     case done          // the session finished a turn
     case working       // mid-job chatter
@@ -20,7 +25,7 @@ enum QuipKind {
 }
 
 enum Lang: String, CaseIterable {
-    case en, sk, cs, de, es, fr, hi, it, ja, ko, nl, pl, pt, ru, sv, tr, uk, zh
+    case en, sk, cs, de, el, es, fr, hi, it, ja, ko, nl, pl, pt, ru, sv, tr, uk, zh
 
     var displayName: String {
         switch self {
@@ -28,6 +33,7 @@ enum Lang: String, CaseIterable {
         case .sk: return "Slovenčina"
         case .cs: return "Čeština"
         case .de: return "Deutsch"
+        case .el: return "Ελληνικά"
         case .es: return "Español"
         case .fr: return "Français"
         case .hi: return "हिन्दी"
@@ -46,8 +52,21 @@ enum Lang: String, CaseIterable {
     }
 }
 
+/// How foul-mouthed the family is allowed to be.
+enum Register: String, CaseIterable {
+    case clean, street
+
+    var displayName: String {
+        switch self {
+        case .clean: return "Clean"
+        case .street: return "Street talk"
+        }
+    }
+}
+
 enum Quips {
     private static let key = "ClaudmeLanguage"
+    private static let registerKey = "ClaudmeRegister"
 
     /// Chosen in the menubar; falls back to the system language, then English.
     static var language: Lang = {
@@ -66,8 +85,25 @@ enum Quips {
         UserDefaults.standard.set(l.rawValue, forKey: key)
     }
 
+    /// Clean unless you go looking for the other one — the crabs sit on top of whatever
+    /// you happen to be screen-sharing.
+    static var register: Register = {
+        guard let saved = UserDefaults.standard.string(forKey: registerKey) else { return .clean }
+        return Register(rawValue: saved) ?? .clean
+    }()
+
+    static func setRegister(_ r: Register) {
+        register = r
+        UserDefaults.standard.set(r.rawValue, forKey: registerKey)
+    }
+
     static func random(_ kind: QuipKind) -> String {
-        (table[language]?[kind] ?? table[.en]![kind] ?? ["…"]).randomElement() ?? "…"
+        // A missing street line is normal (`sleeping` has none), so fall through to the
+        // clean table rather than showing a placeholder.
+        if register == .street, let street = slangTable[language]?[kind], !street.isEmpty {
+            return street.randomElement() ?? "…"
+        }
+        return (table[language]?[kind] ?? table[.en]![kind] ?? ["…"]).randomElement() ?? "…"
     }
 
     // MARK: - The lines
@@ -123,6 +159,19 @@ enum Quips {
             .greeting: ["👋", "Na, Kollege.", "Alles ruhig, Bruder?"],
             .compacting: ["Akten brennen.", "Ich räum auf.", "Weg mit den Beweisen."],
             .compacted: ["grg 😮‍💨", "Alles sauber.", "Keine Akten mehr."],
+            .sleeping: ["z Z"],
+        ],
+        .el: [
+            .done: ["Έγινε, αρχηγέ.", "Καθαρή δουλειά.", "Τακτοποιήθηκε.", "Κανένα ίχνος.", "Ήσυχα και ωραία.", "Δεν πήρε κανείς χαμπάρι.", "Στην εντέλεια.", "Άλλο τίποτα;"],
+            .working: ["…", "Δουλεύω το θέμα.", "Μη με ζορίζεις.", "Ησυχία, το ψήνω.", "Το 'χω, το 'χω."],
+            .waiting: ["Δώσε το οκ, αρχηγέ.", "Περιμένω εντολή.", "Εσύ λες, εγώ κάνω.", "Την ευλογία σου.", "Πες μου ναι."],
+            .trouble: ["Μπλέξαμε, αρχηγέ.", "Κάτι στράβωσε.", "Μας έκοψαν τη βρύση.", "Πάτησα λάθος πόρτα.", "Ζόρια εδώ πέρα."],
+            .idle: ["☕", "🦀", "Βαριέμαι.", "Καμιά δουλειά, αρχηγέ;", "Σκουριάζω εδώ.", "Μέρα μπαίνει, μέρα βγαίνει."],
+            .beer: ["Στην υγειά σου, αρχηγέ.", "Μια γουλιά και πάμε.", "Παγωμένη, όπως πρέπει."],
+            .toast: ["🍻 Στην οικογένεια!", "🍻 Γεια μας, μάγκα!", "🍻 Στην υγειά μας!"],
+            .greeting: ["👋", "Όλα καλά, μάγκα;", "Τι λέει η πιάτσα;"],
+            .compacting: ["Καίω τα χαρτιά.", "Καθαρίζω το σπίτι.", "Δεν μένει τίποτα."],
+            .compacted: ["grg 😮‍💨", "Καθαρά τα βιβλία.", "Ούτε στάχτη δεν έμεινε."],
             .sleeping: ["z Z"],
         ],
         .es: [
@@ -306,6 +355,238 @@ enum Quips {
             .compacting: ["烧账本", "清理门户", "毁尸灭迹"],
             .compacted: ["grg 😮‍💨", "干净了", "什么都没了"],
             .sleeping: ["z Z"],
+        ],
+    ]
+
+    /// The street register. Same crew, no boss in earshot.
+    private static let slangTable: [Lang: [QuipKind: [String]]] = [
+        .en: [
+            .done: ["Done and dusted, boss.", "Sorted. Piece of piss.", "Buried it proper.", "Whacked it. Next one.", "Not a scratch on us.", "Easy money, guv.", "Job's a good 'un.", "Nobody saw a thing."],
+            .working: ["Grafting, boss.", "Elbows deep in it.", "Sod this bit…", "Nearly there, hold up.", "…"],
+            .waiting: ["Oi, boss. A word.", "Waiting on you, guv.", "Give us the nod.", "I ain't moving. Say it.", "Boss? You deaf?"],
+            .trouble: ["We're in the shit.", "Old Bill's on me.", "Got pinched, boss.", "It's gone tits up.", "They cut me off cold."],
+            .idle: ["Bugger all doing.", "Dead as a doornail.", "Bored out me nut.", "☕", "Business is bollocks.", "🦀"],
+            .beer: ["Ahh~ that's the stuff.", "Down the hatch.", "Cheers, ya animals."],
+            .toast: ["🍻 To the firm.", "🍻 Up yours, coppers.", "🍻 Chin chin, son."],
+            .greeting: ["👋", "Oi oi, saveloy.", "Alright, geezer?"],
+            .compacting: ["Torching the books…", "Shredding the lot…", "Bin bags out, boss…"],
+            .compacted: ["Books are ash, boss.", "grg 😮‍💨", "Sod all left to find."],
+        ],
+        .sk: [
+            .done: ["Hotovo, šéfko.", "Vybavené načisto.", "Zakopané, ide sa ďalej.", "Ani ťuk, nikto nič.", "Ľahké prachy, šéfe.", "Hračka, šéfko.", "Čistá fuška.", "Po nás ani smrad."],
+            .working: ["Fachčím, šéfe.", "Som v tom po lakte.", "Do riti s tým…", "Ešte chvíľu, vydrž.", "…"],
+            .waiting: ["Šéfko? Na slovo.", "Čakám na teba, no.", "Kývni a idem.", "Bez teba sa nehnem.", "Šéfe, si hluchý?"],
+            .trouble: ["Sme v riti, šéfe.", "Poliši ma zbalili.", "Zavreli mi kohútik.", "Posralo sa to.", "Zlá noc, šéfko."],
+            .idle: ["Ani pes neštekne.", "Kšefty za hovno.", "Mŕtvo ako v krypte.", "☕", "Nudím sa na smrť.", "🦀"],
+            .beer: ["Ahh~ to pohladí.", "Do dna, chlapci.", "Toto som potreboval."],
+            .toast: ["🍻 Na rodinu, chlapi.", "🍻 Do dna!", "🍻 Nech nás nechytia."],
+            .greeting: ["👋", "Čau, kámo.", "Zdar, ty gauner."],
+            .compacting: ["Pálim účtovníctvo…", "Skartujem ten bordel…", "Upratujem po sebe…"],
+            .compacted: ["Knihy sú popol.", "grg 😮‍💨", "Nenájdu ani hovno."],
+        ],
+        .cs: [
+            .done: ["Hotovo, šéfe.", "Vyřízeno načisto.", "Zakopáno, jede se dál.", "Ani ťuk, nikdo nic.", "Lehký prachy, šéfe.", "Hračka, šéfiku.", "Čistá práce.", "Po nás ani smrad."],
+            .working: ["Makám, šéfe.", "Jsem v tom po lokty.", "Do prdele s tím…", "Ještě chvilku, vydrž.", "…"],
+            .waiting: ["Šéfe? Na slovíčko.", "Čekám na tebe, no.", "Kejvni a jedu.", "Bez tebe se nehnu.", "Šéfe, seš hluchej?"],
+            .trouble: ["Jsme v hajzlu, šéfe.", "Sebrali mě chlupatý.", "Zavřeli mi kohoutek.", "Posralo se to.", "Blbá noc, šéfe."],
+            .idle: ["Ani pes neštěkne.", "Kšefty za hovno.", "Mrtvo jak v kryptě.", "☕", "Nudím se k smrti.", "🦀"],
+            .beer: ["Ahh~ to pohladí.", "Do dna, chlapi.", "Tohle sem potřeboval."],
+            .toast: ["🍻 Na rodinu, chlapi.", "🍻 Do dna!", "🍻 Ať nás nechytnou."],
+            .greeting: ["👋", "Čau, kámo.", "Zdar, ty grázle."],
+            .compacting: ["Pálím účetnictví…", "Skartuju ten bordel…", "Uklízím po sobě…"],
+            .compacted: ["Knihy jsou popel.", "grg 😮‍💨", "Nenajdou ani hovno."],
+        ],
+        .de: [
+            .done: ["Erledigt, Chef.", "Sauber weggeräumt.", "Kiste ist zu.", "War 'n Klacks.", "Nix mehr zu sehen.", "Sache ist geregelt.", "Keiner hat was gesehen.", "So macht man das."],
+            .working: ["Bin dran, Chef.", "Gleich haben wir's.", "Ruhe jetzt, ich denk.", "Schmutzige Arbeit…", "…"],
+            .waiting: ["Sag ein Wort, Chef.", "Grünes Licht?", "Soll ich?", "Ich warte auf dich.", "Nick einmal, Chef."],
+            .trouble: ["Wir sind aufgeflogen.", "Scheiße, Chef.", "Die Bullen sind da.", "Läuft schief.", "Zu heiß gerade."],
+            .idle: ["☕", "🦀", "Langweilig hier.", "Nix los, Chef.", "Mir juckt die Schere.", "Gib mir was zu tun."],
+            .beer: ["Erstmal 'n Bier.", "Hab ich mir verdient.", "Ein Kurzer geht noch."],
+            .toast: ["🍻 Auf die Familie!", "🍻 Auf uns, Brüder!", "🍻 Auf den Chef!"],
+            .greeting: ["👋", "Ey, Bruder.", "Alles ruhig?"],
+            .compacting: ["Akten brennen.", "Alles verschwindet.", "Kein Papier, kein Fall."],
+            .compacted: ["grg 😮‍💨", "Alles sauber.", "Asche, mehr nicht."],
+        ],
+        .el: [
+            .done: ["Καθαρή δουλειά.", "Τσακ μπαμ, αφεντικό.", "Ούτε γάτα ούτε ζημιά.", "Τα 'σπασα, γαμώτο.", "Ξηγήθηκα βασιλικά.", "Μαγκιά μου, ε;", "Δεν άφησα ίχνος.", "Άλλο τίποτα;"],
+            .working: ["…", "Δούλευε, μη μιλάς.", "Το 'χω, ησύχασε.", "Μη με ζορίζεις τώρα.", "Λύνω το κουβάρι."],
+            .waiting: ["Λέγε, αφεντικό.", "Μπαίνω ή όχι;", "Περιμένω σήμα.", "Πες μου ένα ναι.", "Την ευχή σου;"],
+            .trouble: ["Έφαγα πόρτα.", "Γαμώτο, κόλλησα.", "Μας κόψαν τη φόρα.", "Στραβό το κλίμα.", "Ζόρια, αφεντικό."],
+            .idle: ["☕", "🦀", "Ψόφια πράματα.", "Σκουριάζω, γαμώτο.", "Κάνα κελεπούρι;", "Τίποτα δεν παίζει."],
+            .beer: ["Μια γουλιά μόνο.", "Κρύα σαν πάγος.", "Έχει ανάγκες κι ο μάγκας."],
+            .toast: ["🍻 Άσπρο πάτο!", "🍻 Γεια μας, μάγκα!", "🍻 Για το αφεντικό!"],
+            .greeting: ["👋", "Έλα, μάγκα μου.", "Τι λέει, κουμπάρε;"],
+            .compacting: ["Καίω τα χαρτιά.", "Καθαρίζω το σπίτι.", "Στάχτη και μπούρμπερη."],
+            .compacted: ["grg 😮‍💨", "Καθαρά τα χαρτιά.", "Ούτε στάχτη έμεινε."],
+        ],
+        .es: [
+            .done: ["Hecho, jefe.", "Ni una huella.", "De puta madre.", "Limpio y sin ruido.", "Trabajito fino, ¿eh?", "Nadie vio una mierda.", "Asunto zanjado.", "Ya está enterrado."],
+            .working: ["…", "Estoy en ello, coño.", "Callado y currando.", "Joder, vaya lío.", "Dame un minuto."],
+            .waiting: ["Jefe, dime algo.", "¿Le doy o no?", "Espero tu palabra.", "Tú mandas, jefe.", "¿Entro o qué?"],
+            .trouble: ["Nos han pillado.", "Hostia. Problema.", "Se ha jodido, jefe.", "Cortaron el grifo.", "Esto huele a madero."],
+            .idle: ["☕", "🦀", "Tocándome los huevos.", "Ni un trabajo hoy.", "Esto está muerto.", "Me aburro, jefe."],
+            .beer: ["Salud, jefe.", "Una fresquita.", "Me la he ganado."],
+            .toast: ["🍻 Por la familia.", "🍻 Salud y dinero.", "🍻 A los que faltan."],
+            .greeting: ["👋", "¿Qué pasa, primo?", "Buenas, colega."],
+            .compacting: ["Quemando papeles.", "Fuera las pruebas.", "Limpiando la casa."],
+            .compacted: ["grg 😮‍💨", "Cenizas, jefe.", "Ni un papel queda."],
+        ],
+        .fr: [
+            .done: ["C'est plié, boss.", "Chanmé, non ?", "Zéro trace, wesh.", "Le taf est fait.", "Vu par personne.", "Propre de ouf.", "Emballé, c'est réglé.", "J'ai géré, tranquille."],
+            .working: ["…", "Je gère, laisse-moi.", "Ça bosse, wesh.", "Deux secondes, reuf.", "Putain, ce bordel."],
+            .waiting: ["Boss, tu dis quoi ?", "J'y vais ou pas ?", "J'attends ton feu vert.", "C'est toi qui vois.", "Donne le go, boss."],
+            .trouble: ["On est grillés.", "Ça a foiré, putain.", "Y a embrouille.", "Le robinet est coupé.", "Chelou, ce truc."],
+            .idle: ["☕", "🦀", "Rien à faire, relou.", "Je me fais chier.", "Ça bouge pas, wesh.", "File-moi un taf."],
+            .beer: ["Une petite mousse.", "Santé, boss.", "Bien mérité, ça."],
+            .toast: ["🍻 À la famille.", "🍻 Aux absents.", "🍻 Santé, reuf."],
+            .greeting: ["👋", "Wesh, reuf.", "Ça va ou quoi ?"],
+            .compacting: ["Je brûle les papiers.", "Au feu, les preuves.", "On nettoie tout."],
+            .compacted: ["grg 😮‍💨", "Tout est cendre.", "Table rase, boss."],
+        ],
+        .hi: [
+            .done: ["अपुन ने कर दिया।", "काम तमाम, भिड़ू।", "एकदम क्लीन काम।", "अपुन का काम बोलता है।", "सेटिंग हो गया न।", "झंझट खतम, बॉस।", "उंगली तक नहीं लगी।", "टपका दिया चुपचाप।"],
+            .working: ["अपुन लगा हुआ है।", "थोड़ा लोचा है, रुक।", "सब्र कर ना यार।", "चालू है, टेंशन नहीं।", "…"],
+            .waiting: ["बोल भाई, क्या करूँ?", "तेरा हुक्म चाहिए।", "हरी झंडी दे ना।", "अपुन खड़ा है यहीं।", "इशारा कर, बस।"],
+            .trouble: ["लोचा हो गया, भाई।", "पंगा हो गया रे।", "अपुन की लाइन कटी।", "गड़बड़, मेरा दोष नहीं।", "आज दिन खराब है।"],
+            .idle: ["☕", "🦀", "काम दे ना, भाई।", "बोर हो रहा अपुन।", "खाली बैठा हूँ यार।", "कुछ तो बोल ना।"],
+            .beer: ["एक ठंडी, फिर काम।", "क्या माल है ये।", "ब्रेक है अपुन का।"],
+            .toast: ["🍻 भाई के नाम!", "🍻 जो नहीं बोलते!", "🍻 अपुन की टोली!"],
+            .greeting: ["👋", "क्या रे, भिड़ू!", "सब बढ़िया ना?"],
+            .compacting: ["कागज़ जला रहा हूँ।", "सबूत मिटा रहा अपुन।", "कुछ लिखा नहीं रहेगा।"],
+            .compacted: ["grg 😮‍💨", "राख भी नहीं बची।", "ढूँढते रह जाएँगे।"],
+        ],
+        .it: [
+            .done: ["Aò capo, è fatto.", "Pulito, nun se vede.", "'Sto lavoro è chiuso.", "Daje, è annata bene.", "Nessuno ha visto gnente.", "'N lavoro de fino.", "Sistemato, capo.", "Manco 'na impronta."],
+            .working: ["…", "Sto a lavorà, aò.", "'N attimo, capo.", "Ma che è 'sta roba?", "Zitto e pedala."],
+            .waiting: ["Aò, che famo?", "Capo, dimme te.", "Aspetto 'na parola.", "Vado o nun vado?", "Comanni tu, capo."],
+            .trouble: ["Aò, sò cazzi.", "S'è ingrippata, capo.", "Ce l'hanno tagliato.", "Qua puzza de guai.", "È annato tutto storto."],
+            .idle: ["☕", "🦀", "Me sto a rompe li cojoni.", "Nun se move gnente.", "'Na noia mortale.", "Damme 'n lavoro, capo."],
+            .beer: ["'Na bionda ghiacciata.", "Salute, capo.", "Me l'ero meritata."],
+            .toast: ["🍻 Alla famija.", "🍻 A chi nun c'è più.", "🍻 Daje, salute!"],
+            .greeting: ["👋", "Aò, bello de casa.", "Come butta?"],
+            .compacting: ["Brucio le carte.", "Se fa pulizia.", "Sparisce tutto."],
+            .compacted: ["grg 😮‍💨", "Manco 'na cenere.", "Tutto pulito, capo."],
+        ],
+        .ja: [
+            .done: ["片付けたで、オヤジ", "ケジメはつけた", "キッチリ落とし前", "血ィ見んで済んだ", "誰の仕事や思とる", "ナメたらあかんで", "おう、終わったで", "文句ないやろ"],
+            .working: ["今やっとるがな", "汚れ仕事の最中や", "黙って見とけ", "…", "くそ、面倒やのう"],
+            .waiting: ["オヤジ、指示を", "ゴーサイン待ちや", "勝手には動けん", "オヤジ、どうします", "首、縦に振ってや"],
+            .trouble: ["しくじった、すまん", "上からストップや", "サツが来よった", "一旦引くで", "くそったれ、詰んだ"],
+            .idle: ["☕", "🦀", "暇やのう…", "シノギがないわ", "体がなまるで", "仕事回してや"],
+            .beer: ["しみるわぁ", "一杯やろうや", "勝ちの一杯や"],
+            .toast: ["🍻 兄弟、乾杯", "🍻 シマに乾杯", "🍻 オヤジに乾杯"],
+            .greeting: ["👋", "おう、兄弟", "ご苦労さんです"],
+            .compacting: ["帳簿燃やしとる", "証拠は消しとけ", "ガサ入れ前の掃除"],
+            .compacted: ["grg 😮‍💨", "綺麗さっぱりや", "何も残っとらん"],
+        ],
+        .ko: [
+            .done: ["깔끔하게 정리했습니다", "손 좀 봐줬습니다", "형님, 끝냈습니다", "뒤처리까지 완료", "흔적 하나 없습니다", "조졌습니다", "이 바닥 짬밥이 있지", "누구 솜씨인데"],
+            .working: ["작업 중입니다", "손에 피 묻히는 중", "…", "아, 지저분하네", "제길, 빡세네"],
+            .waiting: ["형님, 말씀만 하십쇼", "사인 기다립니다", "저 맘대로는 못 하죠", "고개만 끄덕이십쇼", "답 좀 주십쇼"],
+            .trouble: ["형님, 일이 틀어졌습니다", "위에서 막았습니다", "짭새 떴다", "제길, 꼬였네", "일단 빠집시다"],
+            .idle: ["☕", "🦀", "일 없습니까", "심심해 죽겠네", "몸이 근질근질", "이러다 녹슬겠네"],
+            .beer: ["크, 시원하다", "한 잔 빨자", "이 맛에 일하지"],
+            .toast: ["🍻 형님께", "🍻 우리 식구들", "🍻 의리에"],
+            .greeting: ["👋", "어, 왔냐", "고생하십니다"],
+            .compacting: ["장부 태우는 중", "흔적 지웁니다", "털리기 전에 청소"],
+            .compacted: ["grg 😮‍💨", "싹 다 태웠습니다", "깨끗합니다, 형님"],
+        ],
+        .nl: [
+            .done: ["Geregeld, baas.", "Opgeruimd staat netjes.", "Fluitje van een cent.", "Niks meer te zien.", "Klusje geklaard.", "Zonder getuigen.", "Zo doe je dat.", "Boek is dicht."],
+            .working: ["Bezig, baas.", "Effe wachten.", "Vies werk, dit.", "Kop dicht, ik werk.", "…"],
+            .waiting: ["Zeg het maar, baas.", "Groen licht?", "Mag ik?", "Ik wacht op jou.", "Eén knikje, baas."],
+            .trouble: ["Godverdomme.", "Het loopt fout.", "Smerissen, baas!", "Te heet nu.", "We zijn de lul."],
+            .idle: ["☕", "🦀", "Verveling, baas.", "Niks te doen hier.", "M'n scharen jeuken.", "Geef me een klus."],
+            .beer: ["Eerst een pilsje.", "Verdiend, dit.", "Eentje kan altijd."],
+            .toast: ["🍻 Op de familie!", "🍻 Op ons, maat!", "🍻 Op de baas!"],
+            .greeting: ["👋", "Hé, maat.", "Alles rustig?"],
+            .compacting: ["Alles de fik in.", "Boeken verbranden.", "Geen papier, geen zaak."],
+            .compacted: ["grg 😮‍💨", "Alles schoon.", "Alleen as, baas."],
+        ],
+        .pl: [
+            .done: ["Git, szefie.", "Leży i kwiczy.", "Po ptakach.", "Na glanc zrobione.", "Nikt nie pisnął.", "Klawo poszło.", "Cicho i czysto.", "Robota jak złoto."],
+            .working: ["Robię swoje.", "Grzebię w tym.", "Idzie jak po grudzie.", "…", "Momencik, szefie."],
+            .waiting: ["Szefie, dawaj cynk.", "Kiwnij łbem.", "Bez ciebie ani rusz.", "Gadaj, co robimy.", "Stoję i czekam."],
+            .trouble: ["Kurwa, wpadka.", "Kipisz, szefie!", "Psy na karku.", "Wsypa, szefie.", "Wszystko w plecy."],
+            .idle: ["☕", "🦀", "Nuda, aż boli.", "Zero roboty.", "Odbijam się od ścian.", "Ani grosza dziś."],
+            .beer: ["Zimne, git.", "Ahh, dobra jest.", "Leje się samo."],
+            .toast: ["🍻 Zdrowie szefa!", "🍻 Za tych, co siedzą!", "🍻 Nie ma mocnych!"],
+            .greeting: ["👋", "Elo, ziomek.", "Co tam, brachu?"],
+            .compacting: ["Papiery do pieca.", "Zacieram ślady.", "Wszystko w ogień."],
+            .compacted: ["grg 😮‍💨", "Popiół i tyle.", "Nic na mnie nie mają."],
+        ],
+        .pt: [
+            .done: ["Tá feito, porra.", "Serviço limpo, chefia.", "Nem suei, patrão.", "Missão dada é cumprida.", "Deixei no capricho.", "Desenrolei tudo, ó.", "Sem sobra, sem sujeira.", "Sou foda ou não sou?"],
+            .working: ["Tô no corre, calma.", "Puta trampo isso aqui.", "Segura a onda aí.", "Tá cozinhando, chefia.", "…"],
+            .waiting: ["Fala aí, patrão.", "Preciso do teu aval.", "Dá o sinal, chefia.", "Sem ordem eu não movo.", "Tô parado, e aí?"],
+            .trouble: ["Deu merda, chefe.", "Sujou feio aqui.", "Cortaram minha linha.", "Levei um perdido.", "Não fui eu, juro."],
+            .idle: ["☕", "🦀", "Cadê o serviço, chefia?", "Que tédio da porra.", "Tô de bobeira aqui.", "Manda alguma coisa, ó."],
+            .beer: ["Uma gelada e volto.", "Essa desce redondo.", "Merecida, viu."],
+            .toast: ["🍻 À família, porra!", "🍻 Aos que não falam!", "🍻 Saúde, malandro!"],
+            .greeting: ["👋", "Firmeza, parça?", "Fala, meu irmão."],
+            .compacting: ["Queimando tudo, chefia.", "Sumindo com as provas.", "Nada fica escrito."],
+            .compacted: ["grg 😮‍💨", "Virou cinza tudo.", "Não sobrou nem pó."],
+        ],
+        .ru: [
+            .done: ["Всё ровно, шеф.", "По понятиям сделал.", "Зуб даю — чисто.", "Ништяк отработал.", "Никто не вякнул.", "Чётко, как в аптеке.", "Концы обрубил.", "Отвечаю, шеф."],
+            .working: ["Мучу тему.", "Не гони, работаю.", "Есть движуха.", "…", "Копаюсь помаленьку."],
+            .waiting: ["Шеф, базар есть.", "Ну чё, шеф?", "Кивни — и сделаю.", "Без тебя ни шагу.", "Жду малявы."],
+            .trouble: ["Шухер, шеф!", "Бля, спалились.", "Палево.", "Косяк вышел.", "Меня закрыли."],
+            .idle: ["☕", "🦀", "Глухо, как в танке.", "Ни движухи.", "Сижу, чифирю.", "Скука, хоть вой."],
+            .beer: ["Ух, зашла.", "За милую душу.", "Холодненькая."],
+            .toast: ["🍻 За братву!", "🍻 За тех, кто сидит!", "🍻 Чтоб не последняя!"],
+            .greeting: ["👋", "Здоров, кент.", "Чё как, братан?"],
+            .compacting: ["В печку всё.", "Чищу хату.", "Заметаю следы."],
+            .compacted: ["grg 😮‍💨", "Пепел один.", "Взять нечего."],
+        ],
+        .sv: [
+            .done: ["Fixat, chefen.", "Städat och klart.", "Inga spår kvar.", "Jobbet är gjort.", "Lätt som en plätt.", "Ingen såg ett skit.", "Så gör man det.", "Locket på."],
+            .working: ["Jag jobbar, chefen.", "Snart klart.", "Skitgöra, det här.", "Tyst, jag tänker.", "…"],
+            .waiting: ["Säg till, chefen.", "Grönt ljus?", "Ska jag?", "Jag väntar på dig.", "En nick räcker."],
+            .trouble: ["Jävlar.", "Det sket sig.", "Snuten är här.", "För hett just nu.", "Vi är rökta."],
+            .idle: ["☕", "🦀", "Tråkigt värre.", "Inget på gång.", "Klorna kliar.", "Ge mig ett jobb."],
+            .beer: ["En pilsner först.", "Den är förtjänad.", "En till skadar inte."],
+            .toast: ["🍻 För familjen!", "🍻 Skål, brorsan!", "🍻 För chefen!"],
+            .greeting: ["👋", "Tjena, brorsan.", "Lugnt på gatan?"],
+            .compacting: ["Bränner pappren.", "Städar undan skiten.", "Inga papper, inget fall."],
+            .compacted: ["grg 😮‍💨", "Rent hus.", "Bara aska kvar."],
+        ],
+        .tr: [
+            .done: ["Halloldu be reis.", "İş temiz, iz yok.", "Adam gibi yaptım.", "Bize iş mi dayanır?", "Elimi bile kirletmedim.", "Bitti bile, patron.", "Dert etme, hallettim.", "Böyle iş görülür işte."],
+            .working: ["Uğraşıyorum ya.", "Sabret be reis.", "Bu iş biraz pis.", "Az kaldı, kıpırdama.", "…"],
+            .waiting: ["Bir laf et reis.", "İzin ver, gireyim.", "Söyle, ne yapayım?", "Ağzından çıksın yeter.", "Bekliyorum burada."],
+            .trouble: ["Sıçtık reis.", "Fişi çektiler valla.", "İşler karıştı biraz.", "Kapı yüzüme kapandı.", "Benim suçum değil ha."],
+            .idle: ["☕", "🦀", "İş yok mu reis?", "Canım sıkıldı ya.", "Boş boş geziyorum.", "Ver bir iş, patlıyorum."],
+            .beer: ["Bir soğuk, sonra iş.", "Buz gibi, oh be.", "Bunu hak ettim reis."],
+            .toast: ["🍻 Şerefe be reis!", "🍻 Konuşmayanlara!", "🍻 Aileye, sonuna kadar!"],
+            .greeting: ["👋", "Ne haber koçum?", "Selam olsun kardeş."],
+            .compacting: ["Kağıtları yakıyorum.", "Delil bırakmam ben.", "Küllüğe gidiyor hepsi."],
+            .compacted: ["grg 😮‍💨", "Kül oldu hepsi.", "Arasınlar, bulamazlar."],
+        ],
+        .uk: [
+            .done: ["Чітко, шефе.", "Зуб даю — чисто.", "По понятіях, шефе.", "Ніхто не вякнув.", "Кінці обрубав.", "Нема базару.", "Зроблено на ять.", "Гладко пройшло."],
+            .working: ["Мучу тему.", "Не жени, роблю.", "Є движ.", "…", "Колупаюсь потроху."],
+            .waiting: ["Шефе, є базар.", "Ну шо, шефе?", "Без тебе ні кроку.", "Чекаю маляви.", "Дай знак, шефе."],
+            .trouble: ["Кіпіш, шефе!", "Бляха, спалився.", "Засвітився.", "Косяк вийшов.", "Мене закрили."],
+            .idle: ["☕", "🦀", "Глухо, як у танку.", "Нема движу.", "Сиджу, чифірю.", "Нудьга, хоч вий."],
+            .beer: ["Ух, зайшла.", "Холодненьке.", "За милу душу."],
+            .toast: ["🍻 За братву!", "🍻 За тих, хто сидить!", "🍻 Щоб не остання!"],
+            .greeting: ["👋", "Здоров, кенте.", "Шо як, братан?"],
+            .compacting: ["У піч усе.", "Чищу хату.", "Замітаю сліди."],
+            .compacted: ["grg 😮‍💨", "Попіл, і все.", "Брати нема чого."],
+        ],
+        .zh: [
+            .done: ["搞定，大佬", "摆平了", "干净利落，没留手", "一点尾巴都不留", "老子出手，从没崩", "这单，稳得很", "服了吧，兄弟", "收工，数钱"],
+            .working: ["手上有活", "别吵，正忙", "…", "妈的，有点麻烦", "慢慢来，别急"],
+            .waiting: ["大佬，一句话", "等你点头", "不发话，我不动", "拍板吧，大佬", "等回话呢"],
+            .trouble: ["出事了，大佬", "上头卡住了", "条子来了", "妈的，搞砸了", "先撤，回头再来"],
+            .idle: ["☕", "🦀", "没活干，闲得慌", "手都生锈了", "有单没有", "无聊死了"],
+            .beer: ["爽", "来一口", "这口酒，值"],
+            .toast: ["🍻 敬大佬", "🍻 讲义气", "🍻 兄弟们"],
+            .greeting: ["👋", "大哥，早", "辛苦了，兄弟"],
+            .compacting: ["烧账本", "抹干净痕迹", "抄家前，清场"],
+            .compacted: ["grg 😮‍💨", "干干净净", "什么都没了"],
         ],
     ]
 }

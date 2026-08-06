@@ -63,6 +63,19 @@ final class StatusItemController: NSObject, NSMenuDelegate {
             li.state = (Quips.language == l) ? .on : .off
             langMenu.addItem(li)
         }
+        // The register lives inside Language: it's the same choice, one level down.
+        langMenu.addItem(.separator())
+        for r in Register.allCases {
+            let ri = NSMenuItem(title: r.displayName, action: #selector(pickRegister(_:)), keyEquivalent: "")
+            ri.target = self
+            ri.representedObject = r.rawValue
+            ri.state = (Quips.register == r) ? .on : .off
+            ri.isEnabled = true
+            langMenu.addItem(ri)
+        }
+        langMenu.item(withTitle: Register.street.displayName)?.toolTip =
+            "Real underworld argot, and it swears — in every language"
+
         lang.isEnabled = true
         lang.submenu = langMenu
         menu.addItem(lang)
@@ -168,6 +181,11 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     @objc private func pickLanguage(_ sender: NSMenuItem) {
         guard let raw = sender.representedObject as? String, let l = Lang(rawValue: raw) else { return }
         Quips.setLanguage(l)
+    }
+
+    @objc private func pickRegister(_ sender: NSMenuItem) {
+        guard let raw = sender.representedObject as? String, let r = Register(rawValue: raw) else { return }
+        Quips.setRegister(r)
     }
 
     @objc private func runEffect(_ sender: NSMenuItem) {

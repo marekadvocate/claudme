@@ -136,7 +136,7 @@ throughout: the music changes how they move, never what they're doing. Switch it
 | | |
 |---|---|
 | **The family** | one row per session: rank, colour, status. Click a row to show its terminal |
-| **Language** | eighteen of them |
+| **Language** | nineteen of them, plus the Clean / Street talk switch |
 | **Playground** | fire any of the twelve effects on demand instead of waiting out its timer |
 | **Party mode** | whether music makes them dance. On by default |
 | **3D crabs** | render the family as isometric voxels, like the app icon |
@@ -145,12 +145,25 @@ throughout: the music changes how they move, never what they're doing. Switch it
 
 ## Languages
 
-Eighteen, picked in the menubar, defaulting to your system language: English, Slovak, Czech,
-German, Spanish, French, Hindi, Italian, Japanese, Korean, Dutch, Polish, Portuguese, Russian,
-Swedish, Turkish, Ukrainian, Chinese.
+Nineteen, picked in the menubar, defaulting to your system language: English, Slovak, Czech,
+German, **Greek**, Spanish, French, Hindi, Italian, Japanese, Korean, Dutch, Polish,
+Portuguese, Russian, Swedish, Turkish, Ukrainian, Chinese — each in its own script.
 
 None are translations. Each was written in its own crime-fiction register, so the yakuza speak
-like yakuza and the Italians like Italians. 792 lines in total.
+like yakuza and the Italians like Italians.
+
+### Clean and Street
+
+Every language ships in two registers, switched at the bottom of the **Language** menu:
+
+| | |
+|---|---|
+| **Clean** | the crime film you'd watch with your parents in the room. The default |
+| **Street talk** | real underworld argot — Greek *μάγκας*, Polish *grypsera*, Russian *феня*, French *verlan*, Roman *romanesco*, cockney, Bombay *bhai*. It swears |
+
+Street talk is opt-in on purpose: the crabs sit on top of whatever you happen to be
+screen-sharing. Nothing in either register targets anyone — it's rude about the job, not about
+people. 1691 lines across both.
 
 ## 3D mode
 
@@ -201,7 +214,7 @@ to the screen perimeter, with the body rotating so the legs always face the edge
 | `PetView.swift` | a single crab: geometry, states, dance, traversals, clicks |
 | `VoxelSprite.swift` | isometric voxel rendering for 3D mode |
 | `Naming.swift` | ranks, eras, made names |
-| `Quips.swift` | everything a crab can say, in eighteen languages |
+| `Quips.swift` | everything a crab can say, in nineteen languages and two registers |
 | `AudioSense.swift` | whether anything is playing on this Mac |
 | `TerminalFocus.swift` | walks the process tree to raise a session's terminal |
 | `Updater.swift` | self-update via git |
@@ -220,7 +233,7 @@ to the screen perimeter, with the body rotating so the legs always face the edge
 MIT, no dependencies, no project file — `./build.sh` is the entire build system.
 
 Good first contributions: **a language** (one entry in `Quips.swift` — write what a mobster
-would say in your language, don't translate), **an idle behaviour** (copy the shape of the beer
+would say in your language, don't translate; a `slangTable` entry is optional), **an idle behaviour** (copy the shape of the beer
 break; keep it rare), **an era** (a name pool plus headwear and shell cells).
 
 House rules: no image assets, never block Claude Code, parse the registry defensively.
