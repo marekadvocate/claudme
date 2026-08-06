@@ -960,7 +960,7 @@ open build/Claudme.app</pre>
   (() => {
     const track = document.querySelector('.track');
     const sideways = () => getComputedStyle(track).overflowX === 'auto'
-                        && innerWidth >= 900;
+                        && track.scrollWidth > track.clientWidth + 4;
     addEventListener('wheel', e => {
       if (!sideways()) return;
       const panel = e.target.closest('.track > *');
@@ -991,7 +991,9 @@ open build/Claudme.app</pre>
         if (!sideways() || !el) return;
         e.preventDefault();
         const panel = el.closest('.track > *') || el;
-        track.scrollTo({ left: panel.offsetLeft, behavior: 'smooth' });
+        const all = [...track.children];
+        const i = all.indexOf(panel);
+        track.scrollLeft = (i >= 0 ? i : 0) * track.clientWidth;
       });
     });
 
@@ -1260,17 +1262,34 @@ open build/Claudme.app</pre>
   if (!host) return;
 
   const panels = [...document.querySelectorAll('.track > header, .track > section, .track > footer')];
+
+  // scrollTo({behavior:'smooth'}) is a no-op on this mandatory-snap container in Chrome,
+  // so drive scrollLeft directly and ease it here.
+  let anim = 0;
+  function glide(to){
+    if (!track) return;
+    cancelAnimationFrame(anim);
+    const from = track.scrollLeft, delta = to - from, t0 = performance.now(), ms = 420;
+    if (Math.abs(delta) < 2) return;
+    // rAF never fires in a background tab, so don't leave the jump half-done
+    if (document.hidden || matchMedia('(prefers-reduced-motion:reduce)').matches){
+      track.scrollLeft = to; return;
+    }
+    const step = now => {
+      const k = Math.min(1, (now - t0) / ms);
+      track.scrollLeft = from + delta * (1 - Math.pow(1 - k, 3));
+      if (k < 1) anim = requestAnimationFrame(step);
+    };
+    anim = requestAnimationFrame(step);
+  }
   const buttons = panels.map((panel, i) => {
     const b = document.createElement('button');
     b.type = 'button';
     b.textContent = (panel.querySelector('.wrap') || {}).dataset?.w || `window ${i+1}`;
     b.addEventListener('click', () => {
       // Horizontal when the track is active, plain anchor scrolling otherwise.
-      if (track && track.scrollWidth > track.clientWidth + 4) {
-        track.scrollTo({ left: panel.offsetLeft, behavior: 'smooth' });
-      } else {
-        panel.scrollIntoView({ behavior: 'smooth' });
-      }
+      if (track && track.scrollWidth > track.clientWidth + 4) glide(i * track.clientWidth);
+      else panel.scrollIntoView({ behavior: 'smooth' });
     });
     host.appendChild(b);
     return b;
@@ -1300,7 +1319,7 @@ open build/Claudme.app</pre>
   document.getElementById('startBtn').addEventListener('click', () => {
     const t = document.querySelector('#install');
     if (!t) return;
-    if (track && track.scrollWidth > track.clientWidth + 4) track.scrollTo({ left: t.offsetLeft, behavior:'smooth' });
+    if (track && track.scrollWidth > track.clientWidth + 4) glide(panels.indexOf(t) * track.clientWidth);
     else t.scrollIntoView({ behavior:'smooth' });
   });
 })();
