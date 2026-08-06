@@ -1,0 +1,8 @@
+# Puts a "Sponsor" button at the top of the repo.
+# github: works the moment the Sponsors application is approved.
+github: marekadvocate
+
+# Uncomment once the Ko-fi page exists — an unregistered handle 404s the button.
+# ko_fi: claudme
+
+custom: ["https://marekadvocate.github.io/claudme/#support"]

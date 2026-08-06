@@ -9,6 +9,15 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         self.manager = manager
         self.item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         super.init()
+        // The bare mark, not the app icon — the icon carries a dark rounded plate that
+        // reads as a black sticker against the menubar.
+        if let url = Bundle.main.url(forResource: "menubar", withExtension: "png"),
+           let img = NSImage(contentsOf: url) {
+            img.size = NSSize(width: 17, height: 17)
+            img.isTemplate = false
+            item.button?.image = img
+            item.button?.imagePosition = .imageLeading
+        }
         setTitle(0)
         menu.delegate = self
         item.menu = menu
@@ -20,7 +29,8 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     }
 
     private func setTitle(_ count: Int) {
-        item.button?.title = "🦀 \(count)"
+        // no emoji when the mark is already there; fall back to it if the icon is missing
+        item.button?.title = item.button?.image == nil ? "🦀 \(count)" : " \(count)"
     }
 
     // MARK: - Menu

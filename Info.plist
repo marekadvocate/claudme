@@ -10,6 +10,8 @@
 	<string>dev.marek.claudme</string>
 	<key>CFBundleExecutable</key>
 	<string>Claudme</string>
+	<key>CFBundleIconFile</key>
+	<string>Claudme</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleVersion</key>

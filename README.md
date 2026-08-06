@@ -1,6 +1,8 @@
 <div align="center">
 
-# 🦀 Claudme
+<img src="assets/logo.png" width="140" alt="Claudme">
+
+# Claudme
 
 **Your AI coding agents are a crime family. Now you can see them.**
 

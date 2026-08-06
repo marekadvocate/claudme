@@ -8,7 +8,8 @@
 <meta property="og:title" content="Claudme — your AI agents are a crime family">
 <meta property="og:description" content="One pixel crab per Claude Code session, crawling the edges of your screen.">
 <meta name="theme-color" content="#0d0c0b">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦀</text></svg>">
+<link rel="icon" type="image/svg+xml" href="logo.svg">
+<meta property="og:image" content="https://marekadvocate.github.io/claudme/logo.png">
 <style>
   *,*::before,*::after{box-sizing:border-box}
   :root{
@@ -34,7 +35,7 @@
 
   /* ---------- hero ---------- */
   header{padding:clamp(3rem,7vw,5rem) 0 0;text-align:center;border:0}
-  .logo{font-size:clamp(2.6rem,7vw,4.4rem);margin-bottom:.4rem}
+  .logo{width:clamp(88px,13vw,132px);height:auto;margin-bottom:.9rem;image-rendering:crisp-edges}
   h1{font-size:clamp(2rem,5.2vw,3.4rem);font-weight:800;max-width:19ch;margin-inline:auto}
   .sub{color:var(--dim);font-size:clamp(1rem,2.2vw,1.2rem);max-width:56ch;margin:1.1rem auto 0}
   .cta{display:flex;gap:.7rem;justify-content:center;flex-wrap:wrap;margin-top:2rem}
@@ -153,7 +154,7 @@
 
 <header>
   <div class="wrap">
-    <div class="logo">🦀</div>
+    <img class="logo" src="logo.svg" alt="Claudme" width="132" height="132">
     <h1>Your AI agents are a crime family</h1>
     <p class="sub">
       Claudme gives every running Claude Code session a pixel crab that crawls the edge of
@@ -313,7 +314,7 @@ open build/Claudme.app</pre>
   </div>
 </section>
 
-<section>
+<section id="support">
   <div class="wrap">
     <p class="eyebrow">Support</p>
     <h2>Buy me a Porsche</h2>
@@ -327,7 +328,18 @@ open build/Claudme.app</pre>
       </div>
       <div class="meter"><i id="bar"></i><span id="bartext">€0 of €100,000</span></div>
       <div class="fundrow"><span>Every crab helps</span><span id="pct">0.0%</span></div>
-      <div class="iban" id="iban">IBAN — add yours here before going live</div>
+
+      <div class="cta" style="justify-content:flex-start;margin-top:1.4rem">
+        <a class="btn btn-p" href="https://github.com/sponsors/marekadvocate">💖 GitHub Sponsors</a>
+        <a class="btn btn-s" href="https://ko-fi.com/claudme">☕ Ko-fi</a>
+      </div>
+      <p style="color:var(--faint);font-size:.8rem;margin:.9rem 0 0">
+        GitHub Sponsors takes no cut at all — 100% of it reaches the fund.
+      </p>
+      <div class="iban">
+        Prefer a plain bank transfer, no fees to anyone?<br>
+        <b>IBAN&nbsp;— TODO: paste it here before launch</b>
+      </div>
     </div>
   </div>
 </section>

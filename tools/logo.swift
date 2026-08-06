@@ -149,17 +149,30 @@ struct Face { let pts: [CGPoint]; let color: NSColor }
 
 func faces(_ v: Variant, hw: CGFloat, ox: CGFloat, oy: CGFloat) -> [Face] {
     let hh = hw / 2, hz = hw
+    // Only these three faces can ever be seen from this angle, and each is hidden
+    // when another voxel sits against it. Culling keeps a solid block from emitting
+    // hundreds of invisible polygons into the SVG.
+    var occupied = Set<Int>()
+    let key = { (x: Int, y: Int, z: Int) in (x + 64) << 20 | (y + 64) << 10 | (z + 64) }
+    for vox in v.model { occupied.insert(key(vox.x, vox.y, vox.z)) }
+
     var out: [Face] = []
     for vox in v.model.sorted(by: { ($0.x + $0.y + $0.z) < ($1.x + $1.y + $1.z) }) {
         let sx = ox + CGFloat(vox.x - vox.y) * hw
         let sy = oy + CGFloat(vox.x + vox.y) * hh - CGFloat(vox.z) * hz
         let s = v.pal.of(vox.kind)
-        out.append(Face(pts: [CGPoint(x: sx, y: sy - hh), CGPoint(x: sx + hw, y: sy),
-                              CGPoint(x: sx, y: sy + hh), CGPoint(x: sx - hw, y: sy)], color: s.top))
-        out.append(Face(pts: [CGPoint(x: sx - hw, y: sy), CGPoint(x: sx, y: sy + hh),
-                              CGPoint(x: sx, y: sy + hh + hz), CGPoint(x: sx - hw, y: sy + hz)], color: s.left))
-        out.append(Face(pts: [CGPoint(x: sx + hw, y: sy), CGPoint(x: sx, y: sy + hh),
-                              CGPoint(x: sx, y: sy + hh + hz), CGPoint(x: sx + hw, y: sy + hz)], color: s.right))
+        if !occupied.contains(key(vox.x, vox.y, vox.z + 1)) {
+            out.append(Face(pts: [CGPoint(x: sx, y: sy - hh), CGPoint(x: sx + hw, y: sy),
+                                  CGPoint(x: sx, y: sy + hh), CGPoint(x: sx - hw, y: sy)], color: s.top))
+        }
+        if !occupied.contains(key(vox.x, vox.y + 1, vox.z)) {
+            out.append(Face(pts: [CGPoint(x: sx - hw, y: sy), CGPoint(x: sx, y: sy + hh),
+                                  CGPoint(x: sx, y: sy + hh + hz), CGPoint(x: sx - hw, y: sy + hz)], color: s.left))
+        }
+        if !occupied.contains(key(vox.x + 1, vox.y, vox.z)) {
+            out.append(Face(pts: [CGPoint(x: sx + hw, y: sy), CGPoint(x: sx, y: sy + hh),
+                                  CGPoint(x: sx, y: sy + hh + hz), CGPoint(x: sx + hw, y: sy + hz)], color: s.right))
+        }
     }
     return out
 }
@@ -257,6 +270,69 @@ if let ctx = newContext(sheetW, sheetH) {
     }
     NSGraphicsContext.restoreGraphicsState()
     writePNG(ctx, out.appendingPathComponent("variants.png"))
+}
+
+// MARK: - the chosen mark: iconset, standalone PNG and SVG
+
+let chosenName = ProcessInfo.processInfo.environment["LOGO"] ?? "08-cube-face"
+guard let chosen = variants.first(where: { $0.name == chosenName }) else {
+    fatalError("unknown variant \(chosenName)")
+}
+
+/// App icon: the mark on a dark rounded plate, the way macOS expects.
+func renderIcon(size: Int, to url: URL) {
+    let S = CGFloat(size)
+    guard let ctx = newContext(size, size) else { return }
+    let plate = CGRect(x: S*0.055, y: S*0.055, width: S*0.89, height: S*0.89)
+    ctx.addPath(CGPath(roundedRect: plate, cornerWidth: S*0.205, cornerHeight: S*0.205, transform: nil))
+    ctx.setFillColor(rgb(19, 17, 16).cgColor)
+    ctx.fillPath()
+    ctx.translateBy(x: 0, y: S); ctx.scaleBy(x: 1, y: -1)
+    let m = S * 0.19
+    drawFitted(chosen, in: CGRect(x: m, y: m, width: S - m*2, height: S - m*2), ctx: ctx)
+    writePNG(ctx, url)
+}
+
+let iconset = out.appendingPathComponent("Claudme.iconset")
+try? FileManager.default.createDirectory(at: iconset, withIntermediateDirectories: true)
+for (name, px) in [("icon_16x16",16),("icon_16x16@2x",32),("icon_32x32",32),("icon_32x32@2x",64),
+                   ("icon_128x128",128),("icon_128x128@2x",256),("icon_256x256",256),
+                   ("icon_256x256@2x",512),("icon_512x512",512),("icon_512x512@2x",1024)] {
+    renderIcon(size: px, to: iconset.appendingPathComponent("\(name).png"))
+}
+
+// transparent mark for the README and the page
+if let ctx = newContext(512, 512) {
+    ctx.translateBy(x: 0, y: 512); ctx.scaleBy(x: 1, y: -1)
+    drawFitted(chosen, in: CGRect(x: 20, y: 20, width: 472, height: 472), ctx: ctx)
+    writePNG(ctx, out.appendingPathComponent("logo.png"))
+}
+
+// Menubar image: the bare mark on transparency. The plated app icon looks like a
+// black sticker up there, since every other menubar item is borderless.
+if let ctx = newContext(72, 72) {
+    ctx.translateBy(x: 0, y: 72); ctx.scaleBy(x: 1, y: -1)
+    drawFitted(chosen, in: CGRect(x: 1, y: 1, width: 70, height: 70), ctx: ctx)
+    writePNG(ctx, out.appendingPathComponent("menubar.png"))
+}
+
+// SVG, for crisp scaling on the page
+do {
+    let hw: CGFloat = 12, pad: CGFloat = 4
+    let b = bounds(chosen, hw: hw)
+    var s = #"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 "#
+    s += "\(Int(b.width + pad*2)) \(Int(b.height + pad*2))\" role=\"img\" aria-label=\"Claudme\">"
+    s += "<g shape-rendering=\"crispEdges\">"
+    for f in faces(chosen, hw: hw, ox: pad - b.minX, oy: pad - b.minY) {
+        let pts = f.pts.map { "\(String(format: "%.1f", $0.x)),\(String(format: "%.1f", $0.y))" }
+                       .joined(separator: " ")
+        let c = f.color.usingColorSpace(.sRGB)!
+        s += String(format: "<polygon points=\"%@\" fill=\"#%02x%02x%02x\"/>", pts,
+                    Int(c.redComponent*255), Int(c.greenComponent*255), Int(c.blueComponent*255))
+    }
+    s += "</g></svg>\n"
+    try? s.write(to: out.appendingPathComponent("logo.svg"), atomically: true, encoding: .utf8)
+    print("chosen \(chosen.name): \(faces(chosen, hw: hw, ox: 0, oy: 0).count) visible faces, svg \(s.count) bytes")
 }
 
 print("wrote \(variants.count) variants + variants.png to \(out.path)")
