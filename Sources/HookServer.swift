@@ -15,6 +15,7 @@ final class HookServer {
     /// Renders the overlay to a PNG. Only reachable when CLAUDME_DEBUG=1, so a normal
     /// install exposes nothing but the hook endpoint.
     var onSnapshot: (() -> Void)?
+    var onEffect: ((String) -> Void)?
 
     private static var debugEnabled: Bool {
         ProcessInfo.processInfo.environment["CLAUDME_DEBUG"] == "1"
@@ -74,6 +75,16 @@ final class HookServer {
                 if request.head.hasPrefix("GET /snapshot") {
                     if Self.debugEnabled {
                         DispatchQueue.main.async { [weak self] in self?.onSnapshot?() }
+                    }
+                } else if request.head.hasPrefix("GET /effect/") {
+                    // debug only: same entry point the Playground menu uses, so testing
+                    // it from outside exercises the real code path
+                    if Self.debugEnabled,
+                       let line = request.head.components(separatedBy: "\r\n").first,
+                       let path = line.components(separatedBy: " ").dropFirst().first {
+                        let name = String(path.dropFirst("/effect/".count))
+                            .components(separatedBy: "?").first ?? ""
+                        DispatchQueue.main.async { [weak self] in self?.onEffect?(name) }
                     }
                 } else {
                     self.dispatch(request.body, head: request.head)

@@ -36,6 +36,9 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     // MARK: - Menu
 
     func menuNeedsUpdate(_ menu: NSMenu) {
+        // we decide what's enabled; AppKit's auto-validation greys out anything it
+        // can't reason about, which was dimming the whole Playground submenu
+        menu.autoenablesItems = false
         menu.removeAllItems()
         let sessions = manager.lastSessions
 
@@ -52,6 +55,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         // Language submenu
         let lang = NSMenuItem(title: "Language", action: nil, keyEquivalent: "")
         let langMenu = NSMenu()
+        langMenu.autoenablesItems = false
         for l in Lang.allCases {
             let li = NSMenuItem(title: l.displayName, action: #selector(pickLanguage(_:)), keyEquivalent: "")
             li.target = self
@@ -59,12 +63,14 @@ final class StatusItemController: NSObject, NSMenuDelegate {
             li.state = (Quips.language == l) ? .on : .off
             langMenu.addItem(li)
         }
+        lang.isEnabled = true
         lang.submenu = langMenu
         menu.addItem(lang)
 
         // Playground: fire any effect on demand instead of waiting out its timer
         let play = NSMenuItem(title: "Playground", action: nil, keyEquivalent: "")
         let playMenu = NSMenu()
+        playMenu.autoenablesItems = false
         for effect in PetManager.Effect.allCases {
             let i = NSMenuItem(title: effect.label, action: #selector(runEffect(_:)), keyEquivalent: "")
             i.target = self
@@ -72,6 +78,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
             i.isEnabled = !manager.pets.isEmpty
             playMenu.addItem(i)
         }
+        play.isEnabled = true
         play.submenu = playMenu
         menu.addItem(play)
 
@@ -79,12 +86,14 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         party.target = self
         party.state = PetManager.partyEnabled ? .on : .off
         party.toolTip = "Let the family dance whenever something is playing on this Mac"
+        party.isEnabled = true
         menu.addItem(party)
 
         let voxel = NSMenuItem(title: "3D crabs", action: #selector(toggleVoxel), keyEquivalent: "")
         voxel.target = self
         voxel.state = PetView.voxelMode ? .on : .off
         voxel.toolTip = "Render the family as isometric voxels, like the app icon"
+        voxel.isEnabled = true
         menu.addItem(voxel)
 
         menu.addItem(.separator())
@@ -92,15 +101,18 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         let update = NSMenuItem(title: "Check for updates…", action: #selector(checkUpdates), keyEquivalent: "")
         update.target = self
         update.toolTip = "Pulls the latest source, rebuilds and relaunches"
+        update.isEnabled = true
         menu.addItem(update)
 
         let contribute = NSMenuItem(title: "Contribute on GitHub", action: #selector(openRepo), keyEquivalent: "")
         contribute.target = self
         contribute.toolTip = "New languages, idle behaviours and era skins are all welcome"
+        contribute.isEnabled = true
         menu.addItem(contribute)
 
         menu.addItem(.separator())
         let quit = NSMenuItem(title: "Quit Claudme", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        quit.isEnabled = true
         menu.addItem(quit)
     }
 
