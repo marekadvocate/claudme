@@ -805,10 +805,7 @@ final class PetView: NSView {
 
     private func setBodyAngle(_ a: CGFloat, animated: Bool) {
         let from = (body.presentation() ?? body).value(forKeyPath: "transform.rotation.z")
-        // An isometric sprite has a fixed camera baked into it — spin it to match a wall
-        // and the whole illusion of depth falls apart. Voxel crabs stay upright and simply
-        // stand at the edge instead.
-        currentAngle = Self.voxelMode ? 0 : a
+        currentAngle = a
         updateBodyTransform(animated: animated, keyPath: "transform.rotation.z", from: from)
     }
 
@@ -829,6 +826,10 @@ final class PetView: NSView {
         purgeExpiredBabies(now: now)
         if compactUntil > 0 && now > compactUntil { compactEnd() }
         tickDance(now: now)
+        if traversal != nil {          // a traversal owns placement until it lands
+            stepTraversal(dt: 1.0 / 30.0)
+            return
+        }
 
         if state == .celebrating && now > celebrateUntil {
             applyState(mappedState(), animated: true)
@@ -927,6 +928,8 @@ final class PetView: NSView {
     private var travProp: CALayer?
 
     var isTraversing: Bool { traversal != nil }
+    var onCeiling: Bool { currentSegment == 2 }
+    var onSideWall: Bool { currentSegment == 1 || currentSegment == 3 }
 
     /// Rappel from the ceiling straight down to the floor.
     private func startRope() {
@@ -1032,13 +1035,23 @@ final class PetView: NSView {
 
     // MARK: - Rare tricks (spin / balloon ride)
 
+    /// 0 spin · 1 balloon · 2 rope (ceiling only) · 3 rocket (side walls only)
     func doTrick(now: CFTimeInterval = CACurrentMediaTime(), forced: Int? = nil) {
-        guard beerMug == nil, now >= trickUntil else { return }
+        guard beerMug == nil, now >= trickUntil, traversal == nil else { return }
         nextTrickAt = now + Double.random(in: 600...1500)
         slideRemaining = 0
         legPhase = 0
         legs.path = Self.legsFrameA
-        let kind = forced ?? Int.random(in: 0...1)
+
+        // the two traversals only make sense from the right edge, so they join the
+        // random pool only when the crab is actually standing somewhere they work
+        var pool = [0, 1]
+        if currentSegment == 2 { pool.append(2) }
+        if currentSegment == 1 || currentSegment == 3 { pool.append(3) }
+        let kind = forced ?? pool.randomElement()!
+
+        if kind == 2 { startRope(); return }
+        if kind == 3 { startRocket(); return }
         if kind == 0 {
             spinTrick(now: now)
         } else {
@@ -1395,7 +1408,7 @@ final class PetView: NSView {
         if dancing {
             if now >= danceUntil {
                 setDancing(false)
-                resumeDanceAt = now + Double.random(in: 45...90)   // sit one out
+                resumeDanceAt = now + Double.random(in: 25...35)   // sit one out
             } else if now >= nextMoveAt {
                 nextMoveAt = now + danceBeat * Double.random(in: 6...10)
                 var next = danceMove
@@ -1405,7 +1418,7 @@ final class PetView: NSView {
             }
         } else if now >= resumeDanceAt {
             setDancing(true)
-            danceUntil = now + Double.random(in: 20...40)
+            danceUntil = now + Double.random(in: 25...35)
         }
     }
 

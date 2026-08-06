@@ -333,6 +333,62 @@ final class PetManager {
         for pet in pets.values { pet.applyRenderMode() }
     }
 
+    // MARK: - Playground
+    //
+    // Every effect on demand, so you can see what the crabs can do without waiting
+    // out the timers that normally gate them.
+
+    enum Effect: String, CaseIterable {
+        case celebrate, needsYou, trouble, beer, clink, spin, balloon, rope, rocket
+        case babies, wave, compact
+
+        var label: String {
+            switch self {
+            case .celebrate: return "Finished a task 🎉"
+            case .needsYou:  return "Needs you ✋"
+            case .trouble:   return "Rate limited ⚠️"
+            case .beer:      return "Beer break 🍺"
+            case .clink:     return "Clink glasses 🍻"
+            case .spin:      return "Spin 🌀"
+            case .balloon:   return "Balloon ride 🎈"
+            case .rope:      return "Rappel down a rope 🪢"
+            case .rocket:    return "Rocket across 🚀"
+            case .babies:    return "Spawn subagents 👶"
+            case .wave:      return "Stadium wave 🌊"
+            case .compact:   return "Compact context 🗜️"
+            }
+        }
+    }
+
+    func run(_ effect: Effect) {
+        guard let pet = pets.values.randomElement() else { return }
+        switch effect {
+        case .celebrate: pet.celebrate()
+        case .needsYou:  pet.showNote(Quips.random(.waiting))
+        case .trouble:   pet.showNote(Quips.random(.trouble))
+        case .beer:      pet.beerBreak()
+        case .clink:     pet.beerBreak(); maybeClink(around: pet)
+        case .spin:      pet.doTrick(forced: 0)
+        case .balloon:   pet.doTrick(forced: 1)
+        case .rope:
+            // only a crab on the ceiling can rappel, so pick one that's there
+            (pets.values.first { $0.onCeiling } ?? pet).doTrick(forced: 2)
+        case .rocket:
+            (pets.values.first { $0.onSideWall } ?? pet).doTrick(forced: 3)
+        case .babies:
+            for i in 0..<3 { pet.addBaby(agentId: "playground-\(i)") }
+        case .wave:
+            for (i, p) in pets.values.sorted(by: { $0.frame.origin.x < $1.frame.origin.x }).enumerated() {
+                DispatchQueue.main.asyncAfter(deadline: .now() + Double(i) * 0.13) { [weak p] in
+                    p?.waveHop()
+                }
+            }
+        case .compact:
+            pet.compactStart()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak pet] in pet?.compactEnd() }
+        }
+    }
+
     func handle(_ event: HookEvent) {
         // every hook event carries session context — keep the crab's look fresh
         if !event.sessionId.isEmpty, let pet = pets[event.sessionId] {

@@ -69,12 +69,13 @@ struct MadeName {
     let rank: Rank
     let given: String
     let surname: String
+    let numeral: String
     let era: Era
 
-    /// "Don Vito Opus"
-    var full: String { "\(rank.title) \(given) \(surname)" }
-    /// "Vito Opus" — for tight spaces
-    var short: String { "\(given) \(surname)" }
+    /// "Don Vito Opus IX" — the numeral is what makes them sound like a dynasty
+    var full: String { "\(rank.title) \(given) \(surname) \(numeral)" }
+    /// "Vito Opus IX" — for tight spaces
+    var short: String { "\(given) \(surname) \(numeral)" }
 }
 
 enum Naming {
@@ -97,10 +98,14 @@ enum Naming {
                      variant: Int = 0) -> MadeName {
         let e = era(for: sessionName)
         let pool = e.givenNames
-        let idx = (Int((hash(sessionName) >> 8) % UInt64(pool.count)) + variant) % pool.count
+        let h = hash(sessionName)
+        let idx = (Int((h >> 8) % UInt64(pool.count)) + variant) % pool.count
+        let numerals = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII",
+                        "IX", "X", "XI", "XII", "XIII", "XIV"]
         return MadeName(rank: Rank.forAge(seconds: ageSeconds),
                         given: pool[idx],
                         surname: model.familyName,
+                        numeral: numerals[Int((h >> 24) % UInt64(numerals.count))],
                         era: e)
     }
 }

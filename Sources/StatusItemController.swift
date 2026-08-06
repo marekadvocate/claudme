@@ -62,6 +62,19 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         lang.submenu = langMenu
         menu.addItem(lang)
 
+        // Playground: fire any effect on demand instead of waiting out its timer
+        let play = NSMenuItem(title: "Playground", action: nil, keyEquivalent: "")
+        let playMenu = NSMenu()
+        for effect in PetManager.Effect.allCases {
+            let i = NSMenuItem(title: effect.label, action: #selector(runEffect(_:)), keyEquivalent: "")
+            i.target = self
+            i.representedObject = effect.rawValue
+            i.isEnabled = !manager.pets.isEmpty
+            playMenu.addItem(i)
+        }
+        play.submenu = playMenu
+        menu.addItem(play)
+
         let voxel = NSMenuItem(title: "3D crabs", action: #selector(toggleVoxel), keyEquivalent: "")
         voxel.target = self
         voxel.state = PetView.voxelMode ? .on : .off
@@ -149,6 +162,12 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     @objc private func pickLanguage(_ sender: NSMenuItem) {
         guard let raw = sender.representedObject as? String, let l = Lang(rawValue: raw) else { return }
         Quips.setLanguage(l)
+    }
+
+    @objc private func runEffect(_ sender: NSMenuItem) {
+        guard let raw = sender.representedObject as? String,
+              let effect = PetManager.Effect(rawValue: raw) else { return }
+        manager.run(effect)
     }
 
     @objc private func checkUpdates() { Updater.checkAndPrompt() }
