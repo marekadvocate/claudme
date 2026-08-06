@@ -170,6 +170,7 @@ final class PetView: NSView {
 
     /// Swaps between the flat pixel layers and the single voxel sprite.
     func applyRenderMode() {
+        teardownDanceCubes()          // never leave one mode's pieces over the other's
         let on = Self.voxelMode
         for l in [shell, legs, accent, cap] { l.isHidden = on }
         for l in [eyeLeft, eyeRight, glintLeft, glintRight] { l.isHidden = on }
@@ -179,6 +180,7 @@ final class PetView: NSView {
         body.shadowOpacity = on ? 0.26 : 0.14
         currentSegment = -1          // forces the edge angle to be re-derived next tick
         if on { refreshVoxel() }
+        if dancing { applyDance() }   // rebuild the dance for the mode we just switched to
     }
 
     private func refreshVoxel() {
@@ -456,6 +458,11 @@ final class PetView: NSView {
         info = newInfo
         if nameChanged {
             cap.fillColor = Self.capColor(for: newInfo.name).cgColor
+            // the era is hashed from the name, so the skin has to follow it
+            let e = Naming.era(for: newInfo.name)
+            cap.path = Self.pixelPath(cells: Self.hatCells(for: e))
+            accent.path = Self.pixelPath(cells: Self.accentCells(for: e))
+            refreshVoxel()
         }
         if modelChanged {
             modelKind = ModelKind.parse(newInfo.model)
@@ -915,7 +922,7 @@ final class PetView: NSView {
     /// crabs shouldn't pile up — slide away from a too-close neighbour
     func separate(from other: PetView) {
         let now = CACurrentMediaTime()
-        guard state == .idle || state == .working,
+        guard state != .celebrating, traversal == nil,
               now >= beerUntil, now >= trickUntil else { return }
         let delta = Self.shortestDelta(from: other.perimeterPosition, to: perimT, length: perimeterLength)
         slideDir = delta >= 0 ? 1 : -1
@@ -1048,6 +1055,13 @@ final class PetView: NSView {
     /// 0 spin · 1 balloon · 2 rope (ceiling only) · 3 rocket (side walls only)
     func doTrick(now: CFTimeInterval = CACurrentMediaTime(), forced: Int? = nil) {
         guard beerMug == nil, now >= trickUntil, traversal == nil else { return }
+
+        // Bail before touching any state: a forced rope on a crab that isn't on the
+        // ceiling used to silently consume the cooldown and mute its real tricks for
+        // up to 25 minutes.
+        if forced == 2 && currentSegment != 2 { return }
+        if forced == 3 && !(currentSegment == 1 || currentSegment == 3) { return }
+
         nextTrickAt = now + Double.random(in: 600...1500)
         slideRemaining = 0
         legPhase = 0
@@ -1293,9 +1307,11 @@ final class PetView: NSView {
         return 2 * (w + h)
     }
 
+    /// Each crab gets its own patch of floor, or they all pile into the same corner.
     private var nearestBottomT: CGFloat {
         let w = max(1, roamArea.maxX - roamArea.minX)
-        return min(max(frame.origin.x - roamArea.minX, 0), w)
+        let bed = CGFloat(Naming.hash(sessionId) % 140)
+        return min(max(frame.origin.x - roamArea.minX + bed - 70, 0), w)
     }
 
     /// Forget the current edge position — the next tick re-seats the crab on its ring.
@@ -1743,11 +1759,14 @@ final class PetView: NSView {
 
     private func scheduleBlink() {
         blinkTimer?.invalidate()
-        blinkTimer = Timer.scheduledTimer(withTimeInterval: Double.random(in: 2.4...6.5), repeats: false) { [weak self] _ in
+        // .common mode, or blinking freezes for as long as a menu is tracking
+        let t = Timer(timeInterval: Double.random(in: 2.4...6.5), repeats: false) { [weak self] _ in
             guard let self else { return }
             if self.state != .sleeping { self.blinkOnce() }
             self.scheduleBlink()
         }
+        RunLoop.main.add(t, forMode: .common)
+        blinkTimer = t
     }
 
     private func blinkOnce() {
@@ -1882,9 +1901,11 @@ final class BubbleView: NSView {
             animator().alphaValue = 1
         }
         if let duration {
-            hideTimer = Timer.scheduledTimer(withTimeInterval: duration, repeats: false) { [weak self] _ in
+            let t = Timer(timeInterval: duration, repeats: false) { [weak self] _ in
                 self?.hide()
             }
+            RunLoop.main.add(t, forMode: .common)
+            hideTimer = t
         }
     }
 

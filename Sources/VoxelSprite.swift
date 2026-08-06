@@ -39,7 +39,8 @@ enum VoxelSprite {
                       eyewear: [(Int, Int)] = [],
                       pixel: CGFloat) -> CGImage? {
         let eyeKey = eyewear.map { "\($0.0).\($0.1)" }.joined(separator: ",")
-        let key = "\(bodyColor.hexish)|\(capColor.hexish)|\(era.rawValue)|\(legPhase)|\(sleeping)|\(eyeKey)|\(pixel)"
+        let scaleKey = NSScreen.main?.backingScaleFactor ?? 2
+        let key = "\(bodyColor.hexish)|\(capColor.hexish)|\(era.rawValue)|\(legPhase)|\(sleeping)|\(eyeKey)|\(pixel)|\(scaleKey)"
         if let hit = cache[key] { return hit }
 
         let groups = [
@@ -130,7 +131,10 @@ enum VoxelSprite {
         }
 
         let img = ctx.makeImage()
-        if let img, cache.count < 400 { cache[key] = img }
+        if let img {
+            if cache.count >= 300 { cache.removeAll() }   // cheap bound; these rebuild in ms
+            cache[key] = img
+        }
         return img
     }
 }
@@ -152,7 +156,7 @@ extension VoxelSprite {
     /// A single voxel column — the same picture for every cell of a given colour, so
     /// a whole shattered crab costs only a handful of distinct images.
     static func columnImage(color: NSColor, pixel: CGFloat) -> CGImage? {
-        let key = "\(color.hexish)|\(pixel)"
+        let key = "\(color.hexish)|\(pixel)|\(NSScreen.main?.backingScaleFactor ?? 2)"
         if let hit = columnCache[key] { return hit }
 
         let hw = pixel, hh = pixel / 2, hz = pixel
@@ -202,7 +206,10 @@ extension VoxelSprite {
             ctx.fillPath()
         }
         let img = ctx.makeImage()
-        if let img, columnCache.count < 64 { columnCache[key] = img }
+        if let img {
+            if columnCache.count >= 64 { columnCache.removeAll() }
+            columnCache[key] = img
+        }
         return img
     }
 

@@ -34,9 +34,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
     private var manager: PetManager!
-    private var registry: SessionRegistry!
+    private var registry: SessionRegistry?
     private var hookServer: HookServer!
     private var statusController: StatusItemController!
+
+    /// The port file tells hooks where to send payloads — including prompt text. Leaving
+    /// it behind after we quit points them at whatever binds the port next.
+    func applicationWillTerminate(_ notification: Notification) {
+        let f = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("Claudme/port")
+        try? FileManager.default.removeItem(at: f)
+    }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // single instance guard (when running as a bundle)
@@ -63,7 +71,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         hookServer.onEvent = { [weak self] event in
             self?.manager.handle(event)
             if event.name == "SessionStart" || event.name == "SessionEnd" {
-                self?.registry.pollNow()
+                self?.registry?.pollNow()
             }
         }
         hookServer.start()
@@ -71,10 +79,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         offerHooksOnce()
 
         registry = SessionRegistry()
-        registry.onChange = { [weak self] sessions in
+        registry?.onChange = { [weak self] sessions in
             self?.manager.sync(sessions)
             self?.statusController?.refresh(sessions)
         }
-        registry.start()
+        registry?.start()
+
+        // last, so a hook can never arrive before the things it drives exist
+        hookServer.start()
     }
 }
