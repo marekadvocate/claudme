@@ -75,23 +75,17 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         play.submenu = playMenu
         menu.addItem(play)
 
+        let party = NSMenuItem(title: "Party mode", action: #selector(toggleParty), keyEquivalent: "")
+        party.target = self
+        party.state = PetManager.partyEnabled ? .on : .off
+        party.toolTip = "Let the family dance whenever something is playing on this Mac"
+        menu.addItem(party)
+
         let voxel = NSMenuItem(title: "3D crabs", action: #selector(toggleVoxel), keyEquivalent: "")
         voxel.target = self
         voxel.state = PetView.voxelMode ? .on : .off
         voxel.toolTip = "Render the family as isometric voxels, like the app icon"
         menu.addItem(voxel)
-
-        // Hooks
-        let installed = HooksInstaller.isInstalled()
-        let hooks = NSMenuItem(title: "Live reactions",
-                               action: installed ? #selector(removeHooks) : #selector(installHooks),
-                               keyEquivalent: "")
-        hooks.target = self
-        hooks.state = installed ? .on : .off
-        hooks.toolTip = installed
-            ? "Claude Code hooks are installed — click to remove them"
-            : "Install Claude Code hooks so crabs react the instant a turn ends"
-        menu.addItem(hooks)
 
         menu.addItem(.separator())
 
@@ -176,22 +170,13 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         NSWorkspace.shared.open(URL(string: "https://github.com/marekadvocate/claudme")!)
     }
 
+    @objc private func toggleParty() {
+        manager.setPartyEnabled(!PetManager.partyEnabled)
+    }
+
     @objc private func toggleVoxel() {
         PetView.setVoxelMode(!PetView.voxelMode)
         manager.refreshRenderMode()
     }
 
-    @objc private func installHooks() { runHookAction { try HooksInstaller.install() } }
-    @objc private func removeHooks() { runHookAction { try HooksInstaller.remove() } }
-
-    private func runHookAction(_ op: () throws -> Void) {
-        do {
-            try op()
-        } catch {
-            let alert = NSAlert()
-            alert.messageText = "Claudme"
-            alert.informativeText = "Could not update ~/.claude/settings.json: \(error)"
-            alert.runModal()
-        }
-    }
 }

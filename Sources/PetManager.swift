@@ -59,6 +59,19 @@ final class PetManager {
     private let audio = AudioSense()
     private(set) var musicPlaying = false
 
+    /// Party mode: whether music makes the family dance at all. On unless turned off.
+    private static let partyKey = "ClaudmePartyMode"
+    private(set) static var partyEnabled: Bool = {
+        UserDefaults.standard.object(forKey: partyKey) as? Bool ?? true
+    }()
+
+    func setPartyEnabled(_ on: Bool) {
+        Self.partyEnabled = on
+        UserDefaults.standard.set(on, forKey: Self.partyKey)
+        let dancing = on && musicPlaying
+        for pet in pets.values { pet.setMusicPlaying(dancing) }
+    }
+
     var onCountChanged: ((Int) -> Void)?
 
     func start() {
@@ -86,7 +99,8 @@ final class PetManager {
         audio.onChange = { [weak self] playing in
             guard let self else { return }
             self.musicPlaying = playing
-            for pet in self.pets.values { pet.setMusicPlaying(playing) }
+            let dance = playing && Self.partyEnabled
+            for pet in self.pets.values { pet.setMusicPlaying(dance) }
         }
         audio.start()
     }
@@ -236,7 +250,9 @@ final class PetManager {
         overlay.view.addSubview(pet)
         pets[info.sessionId] = pet
         petOverlay[info.sessionId] = idx
-        if musicPlaying { pet.setMusicPlaying(true) }   // joins a party already in progress
+        if musicPlaying && Self.partyEnabled {
+            pet.setMusicPlaying(true)      // joins a party already in progress
+        }
     }
 
     private func despawn(_ pet: PetView) {

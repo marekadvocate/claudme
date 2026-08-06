@@ -1,6 +1,38 @@
 import AppKit
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
+
+    /// Hooks make the crabs react the instant a turn ends. They edit the user's
+    /// settings.json, so we ask once rather than doing it silently — and never ask again,
+    /// whatever the answer. Afterwards it's `--install-hooks` / `--remove-hooks`.
+    private func offerHooksOnce() {
+        let key = "ClaudmeAskedAboutHooks"
+        guard !UserDefaults.standard.bool(forKey: key), !HooksInstaller.isInstalled() else { return }
+        UserDefaults.standard.set(true, forKey: key)
+
+        let alert = NSAlert()
+        alert.messageText = "Turn on live reactions?"
+        alert.informativeText = """
+            Claudme can react the instant a Claude Code turn ends — celebrations, \
+            subagents, warnings — by adding a one-line hook to ~/.claude/settings.json.
+
+            The hook only ever talks to 127.0.0.1 and always exits 0, so it can't block \
+            or slow down Claude Code. Your settings are backed up first.
+
+            Without it the crabs still work, just up to a second behind.
+            """
+        alert.addButton(withTitle: "Turn on")
+        alert.addButton(withTitle: "Not now")
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        do {
+            try HooksInstaller.install()
+        } catch {
+            let fail = NSAlert()
+            fail.messageText = "Claudme"
+            fail.informativeText = "Could not update ~/.claude/settings.json: \(error)"
+            fail.runModal()
+        }
+    }
     private var manager: PetManager!
     private var registry: SessionRegistry!
     private var hookServer: HookServer!
@@ -31,6 +63,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
         hookServer.start()
+
+        offerHooksOnce()
 
         registry = SessionRegistry()
         registry.onChange = { [weak self] sessions in
