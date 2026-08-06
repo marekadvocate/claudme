@@ -129,6 +129,8 @@ final class PetView: NSView {
     // rare tricks + idle mumbles + hover pokes
     private var trickUntil: CFTimeInterval = 0
     private var nextTrickAt: CFTimeInterval = CACurrentMediaTime() + Double.random(in: 300...900)
+    /// separate clock for rope/rocket — see the traversal branch in tick()
+    private var nextTraversalAt: CFTimeInterval = CACurrentMediaTime() + Double.random(in: 45...120)
     private var nextMumbleAt: CFTimeInterval = CACurrentMediaTime() + Double.random(in: 180...480)
     private var lastPokeAt: CFTimeInterval = 0
 
@@ -876,6 +878,17 @@ final class PetView: NSView {
             }
             if state == .idle && now >= nextTrickAt {
                 doTrick(now: now)
+                break
+            }
+            // Rope and rocket only make sense from the ceiling and the side walls, so on
+            // the general trick timer they were nearly unreachable: a 10-25 minute
+            // cooldown, then a one-in-three pick, and only if the crab happened to be
+            // standing in the right place. Give them their own, much shorter clock that
+            // only ticks while it is.
+            if state == .idle, now >= nextTraversalAt, traversal == nil,
+               currentSegment == 1 || currentSegment == 2 || currentSegment == 3 {
+                nextTraversalAt = now + Double.random(in: 100...220)
+                if currentSegment == 2 { startRope() } else { startRocket() }
                 break
             }
             if slideRemaining > 0 {

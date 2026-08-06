@@ -503,6 +503,42 @@
   body.ogshot .track > header .stage{margin:0;width:100%;margin-left:0;transform:none}
   body.ogshot .track > header .screen{height:100dvh;min-height:0}
 
+  /* ---- ?promo : the page directs its own launch film ----
+     Screen recording needs a permission the build machine hasn't got, so the film is
+     captured frame by frame from a headless browser. That only works if the scene is
+     driven by the page itself rather than by someone moving a mouse. */
+  body.promo .hero,body.promo .cta,body.promo .shuffle-hint,body.promo .deskcredit,
+  body.promo .track > section,body.promo .track > footer{display:none!important}
+  body.promo .track > header{height:100dvh;padding:0}
+  body.promo .track > header > .wrap{padding:0;height:100%}
+  body.promo .track > header .stage{margin:0;width:100%;margin-left:0;transform:none}
+  body.promo .track > header .screen{height:100dvh;min-height:0}
+  #promoCard{
+    position:fixed;inset:0;z-index:9000;display:grid;place-items:center;
+    background:radial-gradient(80% 60% at 50% 50%,rgba(7,6,5,.86),rgba(7,6,5,.97));
+    opacity:0;transition:opacity .32s ease;pointer-events:none;text-align:center;padding:6vw
+  }
+  #promoCard.on{opacity:1}
+  #promoCard .line{
+    font:700 clamp(1.6rem,4.6vw,3.4rem)/1.14 var(--display);color:#f4ece2;
+    letter-spacing:-.02em;max-width:22ch;margin:0 auto
+  }
+  #promoCard .sub2{
+    margin-top:.9rem;font:500 clamp(.8rem,1.5vw,1.05rem)/1.5 var(--mono);color:#b0a294;
+    letter-spacing:.04em
+  }
+  #promoLower{
+    position:fixed;left:0;right:0;bottom:7%;z-index:9000;text-align:center;
+    opacity:0;transition:opacity .28s ease;pointer-events:none;padding:0 6vw
+  }
+  #promoLower.on{opacity:1}
+  #promoLower span{
+    display:inline-block;background:rgba(9,8,7,.82);border:1px solid rgba(217,119,87,.35);
+    border-radius:8px;padding:.6rem 1.1rem;
+    font:600 clamp(.85rem,1.7vw,1.25rem)/1.3 var(--font);color:#f2e8dd;
+    backdrop-filter:blur(6px)
+  }
+
   /* ==== THEME:START ==== After Hours — The family works at night: a near-black desk lit by one warm lamp overhead, charcoal windows set in bone-warm type, and the crab's terracotta as the only colour in the room. */
   :root{
     --desk:#0a0908; --desk2:#050404;
@@ -1143,6 +1179,7 @@ open build/Claudme.app</pre>
     });
   });
 
+  window.claudmeAct = runAct;
   function runAct(act){
     {
       const c = crabs[Math.floor(Math.random()*crabs.length)];
@@ -1527,6 +1564,45 @@ open build/Claudme.app</pre>
 
 /* the OG capture loads the page with ?og so the card is the demo alone */
 if (new URLSearchParams(location.search).has('og')) document.body.classList.add('ogshot');
+
+/* ---------- ?promo : plays a timed scene so the film can be captured headlessly ----------
+   Beats are (seconds, action, overlay). The action names are the same ones the Shuffle
+   button fires, so the film can only ever show behaviour the product actually has. */
+(function promo(){
+  const q = new URLSearchParams(location.search);
+  if (!q.has('promo')) return;
+  document.body.classList.add('promo');
+
+  const card = document.createElement('div');
+  card.id = 'promoCard';
+  card.innerHTML = '<div><p class="line"></p><p class="sub2"></p></div>';
+  const lower = document.createElement('div');
+  lower.id = 'promoLower';
+  lower.innerHTML = '<span></span>';
+  document.body.append(card, lower);
+
+  const showCard = (line, sub) => {
+    card.querySelector('.line').textContent = line || '';
+    card.querySelector('.sub2').textContent = sub || '';
+    card.classList.toggle('on', !!line);
+  };
+  const showLower = t => {
+    lower.querySelector('span').textContent = t || '';
+    lower.classList.toggle('on', !!t);
+  };
+
+  // filled in per cut; window.CLAUDME_BEATS lets the capture script swap the script
+  // the capture script passes the cut in the URL, so one page renders every version
+  let beats = window.CLAUDME_BEATS || [];
+  try { const raw = q.get('beats'); if (raw) beats = JSON.parse(raw); } catch {}
+  for (const b of beats) {
+    setTimeout(() => {
+      if (b.card !== undefined) showCard(b.card, b.sub);
+      if (b.lower !== undefined) showLower(b.lower);
+      if (b.act && typeof window.claudmeAct === 'function') window.claudmeAct(b.act);
+    }, b.t * 1000);
+  }
+})();
 
 </script>
 

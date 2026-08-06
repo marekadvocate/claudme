@@ -1,0 +1,14 @@
+[
+ {"t":0.2,"card":"Six terminals.","sub":"Six spinners. Nothing to look at."},
+ {"t":2.6,"card":""},
+ {"t":3.0,"lower":"Every session becomes a crab on the edge of your screen"},
+ {"t":6.0,"lower":"","act":"done"},
+ {"t":7.6,"lower":"It finished. You didn't have to look."},
+ {"t":10.0,"lower":"","act":"need"},
+ {"t":11.4,"lower":"This one is waiting on you"},
+ {"t":14.0,"lower":"","act":"beer"},
+ {"t":16.0,"act":"clink"},
+ {"t":17.6,"lower":"They have a life of their own"},
+ {"t":20.0,"lower":"","act":"wave"},
+ {"t":22.0,"card":"Claudme","sub":"free · open source · marekadvocate.github.io/claudme"}
+]
