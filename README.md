@@ -71,6 +71,7 @@ folder. Nothing else is left behind.
 | stops and hops, `!` bubble | **waiting for you** — permission or input |
 | jump, confetti, *"It's done, boss."* | turn just finished |
 | curled up on the bottom edge, `z Z` | idle more than 10 minutes |
+| wakes up, grumbles, shuffles somewhere else | asleep in the same spot for a minute |
 | ⚠️ bubble | rate limit or API error |
 | chewing, 🗜️ bubble, then a burp | compacting its context |
 | little crabs bobbing alongside | that session's subagents |
@@ -119,6 +120,11 @@ distinguishable.
 They greet each other in passing, take a beer break every few minutes and clink glasses if a
 neighbour is close, occasionally spin or take a balloon ride when bored, and run a stadium wave
 when the last busy session finishes. Crabs that drift too close slide apart.
+
+**Shift change** — a sleeping crab that has lain in the same patch for a minute gets sick of it,
+says so, and walks off to a different stretch of the floor, at least a fifth of the edge away.
+A session you parked this morning is a crew member with somewhere better to be, not a statue in
+one corner.
 
 **Traversals** — a crab on the ceiling can rappel to the floor on a rope 🪢; one on a side wall
 can rocket across to the other 🚀. Both leave the perimeter for a few seconds, then rejoin it
