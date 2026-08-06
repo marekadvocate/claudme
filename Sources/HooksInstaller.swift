@@ -2,7 +2,19 @@ import Foundation
 
 enum HooksInstallerError: Error, CustomStringConvertible {
     case malformedSettings
-    var description: String { "~/.claude/settings.json is not valid JSON — refusing to touch it" }
+    case unreadableSettings
+    case backupFailed
+
+    var description: String {
+        switch self {
+        case .malformedSettings:
+            return "~/.claude/settings.json is not valid JSON — refusing to touch it"
+        case .unreadableSettings:
+            return "~/.claude/settings.json exists but can't be read — refusing to touch it"
+        case .backupFailed:
+            return "Couldn't back up ~/.claude/settings.json — refusing to change it"
+        }
+    }
 }
 
 /// Merges/removes Claudme command hooks in ~/.claude/settings.json.
@@ -34,26 +46,26 @@ enum HooksInstaller {
     }
 
     static func install() throws {
-        var settings = try readSettings()
+        var settings = try readSettings()   // throws rather than assuming empty
 
-        if FileManager.default.fileExists(atPath: settingsURL.path),
-           !FileManager.default.fileExists(atPath: backupURL.path) {
-            try? FileManager.default.copyItem(at: settingsURL, to: backupURL)
+        // A backup we failed to take is worse than no backup, because the rest of this
+        // function is about to edit a file we don't own. Refresh it every install so it
+        // always reflects the state we're changing from.
+        if FileManager.default.fileExists(atPath: settingsURL.path) {
+            try? FileManager.default.removeItem(at: backupURL)
+            do { try FileManager.default.copyItem(at: settingsURL.resolvingSymlinksInPath(),
+                                                  to: backupURL) }
+            catch { throw HooksInstallerError.backupFailed }
         }
 
         var hooks = settings["hooks"] as? [String: Any] ?? [:]
-        // drop our old entries first (the command may have changed), then add fresh
         for (event, value) in hooks {
-            guard var entries = value as? [[String: Any]] else { continue }
-            entries.removeAll { entryIsOurs($0) }
-            if entries.isEmpty {
-                hooks.removeValue(forKey: event)
-            } else {
-                hooks[event] = entries
-            }
+            hooks[event] = strippingOurs(value) ?? value
         }
         for event in events {
-            var entries = hooks[event] as? [[String: Any]] ?? []
+            // Element-wise, and anything we don't recognise is carried through untouched —
+            // a single odd entry must never take the user's other hooks with it.
+            var entries = (strippingOurs(hooks[event]) as? [Any]) ?? []
             entries.append(["hooks": [["type": "command", "command": hookCommand, "timeout": 5]]])
             hooks[event] = entries
         }
@@ -61,20 +73,39 @@ enum HooksInstaller {
         try write(settings)
     }
 
+    /// Removes only our own entries from an event's array, preserving everything else
+    /// exactly as found — including elements that aren't the shape we expect.
+    private static func strippingOurs(_ value: Any?) -> Any? {
+        guard let array = value as? [Any] else { return value }
+        return array.filter { element in
+            guard let entry = element as? [String: Any] else { return true }  // keep unknowns
+            return !entryIsOurs(entry)
+        }
+    }
+
     static func remove() throws {
         var settings = try readSettings()
         guard var hooks = settings["hooks"] as? [String: Any] else { return }
         for (event, value) in hooks {
-            guard var entries = value as? [[String: Any]] else { continue }
-            entries.removeAll { entryIsOurs($0) }
-            if entries.isEmpty {
+            let kept = strippingOurs(value)
+            if let array = kept as? [Any], array.isEmpty {
                 hooks.removeValue(forKey: event)
             } else {
-                hooks[event] = entries
+                hooks[event] = kept
             }
         }
-        settings["hooks"] = hooks
+        // leave no empty "hooks": {} behind — the README promises a clean uninstall
+        if hooks.isEmpty {
+            settings.removeValue(forKey: "hooks")
+        } else {
+            settings["hooks"] = hooks
+        }
         try write(settings)
+
+        try? FileManager.default.removeItem(at: backupURL)
+        let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("Claudme", isDirectory: true)
+        try? FileManager.default.removeItem(at: support)
     }
 
     private static func containsOurs(_ entries: [[String: Any]]) -> Bool {
@@ -88,8 +119,20 @@ enum HooksInstaller {
         }
     }
 
+    /// Missing is fine — we'll create it. Present-but-unreadable is NOT: treating that as
+    /// an empty dict would make install() replace the user's real settings with a file
+    /// containing nothing but our hooks.
     private static func readSettings() throws -> [String: Any] {
-        guard let data = try? Data(contentsOf: settingsURL) else { return [:] }
+        var isDir: ObjCBool = false
+        let exists = FileManager.default.fileExists(atPath: settingsURL.path, isDirectory: &isDir)
+        // lstat semantics: a dangling symlink still counts as "there is something here"
+        let linkExists = (try? FileManager.default.attributesOfItem(atPath: settingsURL.path)) != nil
+        guard exists || linkExists else { return [:] }
+
+        guard let data = try? Data(contentsOf: settingsURL) else {
+            throw HooksInstallerError.unreadableSettings
+        }
+        if data.isEmpty { return [:] }
         guard let obj = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else {
             throw HooksInstallerError.malformedSettings
         }
@@ -101,6 +144,14 @@ enum HooksInstaller {
             withJSONObject: settings,
             options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
         )
-        try data.write(to: settingsURL, options: .atomic)
+        // Atomic writes replace the path itself, which would turn a settings.json that is
+        // symlinked into a dotfiles repo into a plain file and orphan the real one. Resolve
+        // the link first so we always write through to the actual target.
+        let target = settingsURL.resolvingSymlinksInPath()
+        try data.write(to: target, options: .atomic)
+        // an atomic write creates a fresh inode with default perms; this file can carry
+        // tokens, so keep it owner-only
+        try? FileManager.default.setAttributes([.posixPermissions: 0o600],
+                                               ofItemAtPath: target.path)
     }
 }

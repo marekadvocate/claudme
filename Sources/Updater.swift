@@ -24,19 +24,40 @@ enum Updater {
             ? root : nil
     }
 
-    @discardableResult
-    private static func git(_ args: [String], in dir: URL) -> (out: String, ok: Bool) {
+    /// Runs a child process with a hard deadline. Without one, `git fetch` on a captive
+    /// portal never returns — and since this app has no window, a hung main thread means
+    /// force-quit is the only way out.
+    private static func run(_ launch: String, _ args: [String],
+                            in dir: URL, timeout: TimeInterval) -> (out: String, ok: Bool) {
         let p = Process()
         p.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-        p.arguments = ["git", "-C", dir.path] + args
+        p.arguments = args
+        p.currentDirectoryURL = dir
+        var env = ProcessInfo.processInfo.environment
+        env["GIT_TERMINAL_PROMPT"] = "0"            // never sit waiting for credentials
+        env["GIT_HTTP_LOW_SPEED_LIMIT"] = "1000"
+        env["GIT_HTTP_LOW_SPEED_TIME"] = "15"
+        p.environment = env
+
         let pipe = Pipe()
         p.standardOutput = pipe
         p.standardError = pipe
         do { try p.run() } catch { return ("", false) }
+
+        let killer = DispatchWorkItem { if p.isRunning { p.terminate() } }
+        DispatchQueue.global().asyncAfter(deadline: .now() + timeout, execute: killer)
         let data = pipe.fileHandleForReading.readDataToEndOfFile()
         p.waitUntilExit()
+        killer.cancel()
+
         return (String(decoding: data, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines),
                 p.terminationStatus == 0)
+    }
+
+    @discardableResult
+    private static func git(_ args: [String], in dir: URL,
+                            timeout: TimeInterval = 30) -> (out: String, ok: Bool) {
+        run("git", ["git", "-C", dir.path] + args, in: dir, timeout: timeout)
     }
 
     static func check() -> Status {
@@ -58,21 +79,10 @@ enum Updater {
         let pull = git(["pull", "--ff-only"], in: root)
         guard pull.ok else { return "git pull failed:\n\(pull.out)" }
 
-        let build = Process()
-        build.executableURL = URL(fileURLWithPath: "/bin/bash")
-        build.arguments = [root.appendingPathComponent("build.sh").path]
-        build.currentDirectoryURL = root
-        let pipe = Pipe()
-        build.standardOutput = pipe
-        build.standardError = pipe
-        do { try build.run() } catch { return "Could not start build.sh." }
-        let out = pipe.fileHandleForReading.readDataToEndOfFile()
-        build.waitUntilExit()
-        guard build.terminationStatus == 0 else {
-            let tail = String(decoding: out, as: UTF8.self).suffix(600)
-            return "Build failed:\n\(tail)"
-        }
-        relaunch()
+        let build = run("bash", ["bash", root.appendingPathComponent("build.sh").path],
+                        in: root, timeout: 300)
+        guard build.ok else { return "Build failed:\n\(build.out.suffix(600))" }
+        DispatchQueue.main.async { relaunch() }
         return nil
     }
 
@@ -86,9 +96,16 @@ enum Updater {
 
     // MARK: - UI
 
-    /// Menubar entry point: check, then offer the update.
+    /// Menubar entry point. Git and the build run off the main thread; only the alerts
+    /// and the relaunch come back to it, so the crabs keep moving throughout.
     static func checkAndPrompt() {
-        let status = check()
+        DispatchQueue.global(qos: .userInitiated).async {
+            let status = check()
+            DispatchQueue.main.async { present(status) }
+        }
+    }
+
+    private static func present(_ status: Status) {
         let alert = NSAlert()
         alert.messageText = "Claudme"
 
@@ -125,12 +142,16 @@ enum Updater {
             alert.addButton(withTitle: "Later")
             guard alert.runModal() == .alertFirstButtonReturn else { return }
 
-            if let error = update() {
-                let fail = NSAlert()
-                fail.messageText = "Update failed"
-                fail.informativeText = error
-                fail.alertStyle = .warning
-                fail.runModal()
+            DispatchQueue.global(qos: .userInitiated).async {
+                let error = update()
+                guard let error else { return }        // success relaunches itself
+                DispatchQueue.main.async {
+                    let fail = NSAlert()
+                    fail.messageText = "Update failed"
+                    fail.informativeText = error
+                    fail.alertStyle = .warning
+                    fail.runModal()
+                }
             }
         }
     }

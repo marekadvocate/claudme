@@ -10,6 +10,8 @@ struct HookEvent {
 /// Tiny loopback HTTP listener. Claude Code hooks POST their stdin JSON here via curl.
 final class HookServer {
     static let defaultPort: UInt16 = 48291
+    /// hook payloads are small; anything larger is a mistake or an attack
+    static let maxBodyBytes = 4 << 20
 
     var onEvent: ((HookEvent) -> Void)?   // delivered on main thread
     /// Renders the overlay to a PNG. Only reachable when CLAUDME_DEBUG=1, so a normal
@@ -61,6 +63,9 @@ final class HookServer {
 
     private func handle(_ conn: NWConnection) {
         conn.start(queue: queue)
+        // a peer that opens a socket and never finishes a request would otherwise be
+        // held until the app quits
+        queue.asyncAfter(deadline: .now() + 5) { [weak conn] in conn?.cancel() }
         readRequest(conn, buffer: Data())
     }
 
@@ -69,7 +74,7 @@ final class HookServer {
             guard let self else { conn.cancel(); return }
             var buf = buffer
             if let data { buf.append(data) }
-            if buf.count > (8 << 20) { conn.cancel(); return }
+            if buf.count > Self.maxBodyBytes + 65536 { conn.cancel(); return }
             if let request = Self.completeRequest(in: buf) {
                 self.respond(conn)
                 if request.head.hasPrefix("GET /snapshot") {
@@ -110,13 +115,19 @@ final class HookServer {
         guard let head = String(data: data.subdata(in: 0..<headerRange.lowerBound), encoding: .utf8)
         else { return nil }
 
+        // Content-Length is attacker-controlled: this listener is unauthenticated and on a
+        // known port, so a negative or absurd value must be rejected, not trusted. A
+        // negative one used to build a reversed Range and trap the whole app.
         var contentLength = 0
         for line in head.components(separatedBy: "\r\n") {
             let parts = line.split(separator: ":", maxSplits: 1, omittingEmptySubsequences: false)
-            if parts.count == 2,
-               parts[0].trimmingCharacters(in: .whitespaces).lowercased() == "content-length" {
-                contentLength = Int(parts[1].trimmingCharacters(in: .whitespaces)) ?? 0
-            }
+            guard parts.count == 2,
+                  parts[0].trimmingCharacters(in: .whitespaces).lowercased() == "content-length"
+            else { continue }
+            guard let n = Int(parts[1].trimmingCharacters(in: .whitespaces)),
+                  n >= 0, n <= maxBodyBytes
+            else { return nil }          // malformed length: refuse the request outright
+            contentLength = n
         }
         let bodyStart = headerRange.upperBound
         guard data.count - bodyStart >= contentLength else { return nil }
