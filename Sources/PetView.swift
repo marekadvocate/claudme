@@ -173,8 +173,10 @@ final class PetView: NSView {
         for l in [shell, legs, accent, cap] { l.isHidden = on }
         for l in [eyeLeft, eyeRight, glintLeft, glintRight] { l.isHidden = on }
         voxel.isHidden = !on
+        accessoryLayer?.isHidden = on     // 3D bakes eyewear into the sprite
         // the voxel crab is drawn from above, so it needs no ground shadow of its own
         body.shadowOpacity = on ? 0.26 : 0.14
+        currentSegment = -1          // forces the edge angle to be re-derived next tick
         if on { refreshVoxel() }
     }
 
@@ -186,6 +188,7 @@ final class PetView: NSView {
                                           era: era,
                                           legPhase: legPhase,
                                           sleeping: state == .sleeping,
+                                          eyewear: Self.eyewearCells(for: permissionMode),
                                           pixel: 4.5)
         else { return }
         let scale = NSScreen.main?.backingScaleFactor ?? 2
@@ -515,8 +518,40 @@ final class PetView: NSView {
         default:
             return
         }
-        body.addSublayer(layer)
+        // Must live in the rig, not the body: the eyes are in the rig, so eyewear parked
+        // on the body would stay put while the face rippled out from under it.
+        rig.addSublayer(layer)
         accessoryLayer = layer
+        layer.isHidden = Self.voxelMode      // 3D draws eyewear into the sprite instead
+        if dancing { applyEyewearWave() }
+    }
+
+    /// Keeps the glasses riding the same wave as the eye cubes underneath them.
+    private func applyEyewearWave() {
+        guard let layer = accessoryLayer else { return }
+        layer.removeAnimation(forKey: "cubeLift")
+        guard dancing, !Self.voxelMode else { return }
+        let lift = CABasicAnimation(keyPath: "transform.translation.y")
+        lift.fromValue = -1.5
+        lift.toValue = 3.5
+        lift.duration = danceBeat / 2
+        lift.autoreverses = true
+        lift.repeatCount = .infinity
+        lift.timeOffset = 5 * 0.055 + 3 * 0.045     // the eye row, averaged across the face
+        lift.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+        layer.add(lift, forKey: "cubeLift")
+    }
+
+    /// Eyewear as grid cells, for the voxel renderer.
+    static func eyewearCells(for mode: String?) -> [(Int, Int)] {
+        switch mode {
+        case "bypassPermissions":                        // wraparound shades
+            return [(1, 3), (2, 3), (3, 3), (7, 3), (8, 3), (9, 3), (5, 3)]
+        case "plan":                                     // round rims, open bridge
+            return [(1, 3), (3, 3), (7, 3), (9, 3), (2, 2), (8, 2)]
+        default:
+            return []
+        }
     }
 
     /// remote connection → a little satellite on an elliptical orbit 🛰️
@@ -770,7 +805,10 @@ final class PetView: NSView {
 
     private func setBodyAngle(_ a: CGFloat, animated: Bool) {
         let from = (body.presentation() ?? body).value(forKeyPath: "transform.rotation.z")
-        currentAngle = a
+        // An isometric sprite has a fixed camera baked into it — spin it to match a wall
+        // and the whole illusion of depth falls apart. Voxel crabs stay upright and simply
+        // stand at the edge instead.
+        currentAngle = Self.voxelMode ? 0 : a
         updateBodyTransform(animated: animated, keyPath: "transform.rotation.z", from: from)
     }
 
@@ -1486,6 +1524,7 @@ final class PetView: NSView {
             eye.add(lift, forKey: "cubeLift")
         }
 
+        applyEyewearWave()
         for l in [shell, accent, cap] { l.isHidden = true }
         voxel.isHidden = true               // the shattered cubes replace the single sprite
         cubeHolder.isHidden = false
@@ -1501,6 +1540,7 @@ final class PetView: NSView {
         cubeHolder.isHidden = true
         eyeLeft.removeAnimation(forKey: "cubeLift")
         eyeRight.removeAnimation(forKey: "cubeLift")
+        accessoryLayer?.removeAnimation(forKey: "cubeLift")
         if Self.voxelMode {
             voxel.isHidden = false
         } else {

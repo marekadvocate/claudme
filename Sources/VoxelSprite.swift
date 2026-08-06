@@ -36,8 +36,10 @@ enum VoxelSprite {
                       era: Era,
                       legPhase: Int,
                       sleeping: Bool,
+                      eyewear: [(Int, Int)] = [],
                       pixel: CGFloat) -> CGImage? {
-        let key = "\(bodyColor.hexish)|\(capColor.hexish)|\(era.rawValue)|\(legPhase)|\(sleeping)|\(pixel)"
+        let eyeKey = eyewear.map { "\($0.0).\($0.1)" }.joined(separator: ",")
+        let key = "\(bodyColor.hexish)|\(capColor.hexish)|\(era.rawValue)|\(legPhase)|\(sleeping)|\(eyeKey)|\(pixel)"
         if let hit = cache[key] { return hit }
 
         let groups = [
@@ -48,6 +50,7 @@ enum VoxelSprite {
                   color: NSColor(white: 1, alpha: 0.30).blended(withFraction: 0.7, of: bodyColor) ?? bodyColor),
             Group(cells: PetView.hatCells(for: era), color: capColor),
             Group(cells: sleeping ? [] : [(2, 3), (8, 3)], color: PetView.inkColor),
+            Group(cells: sleeping ? [] : eyewear, color: PetView.inkColor),
         ]
 
         // occupancy over every group, so faces buried between parts are dropped too
