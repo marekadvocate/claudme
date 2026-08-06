@@ -114,6 +114,7 @@ final class PetView: NSView {
     private var nextHopAt: CFTimeInterval = 0
     private var nextChatterAt: CFTimeInterval = 0
     private var blinkTimer: Timer?
+    private var stateRecheck = 0
 
     // beer break
     private var beerUntil: CFTimeInterval = 0
@@ -825,6 +826,15 @@ final class PetView: NSView {
         if perimT < 0 { placeOnPerimeter() }
         purgeExpiredBabies(now: now)
         if compactUntil > 0 && now > compactUntil { compactEnd() }
+
+        // mappedState depends on wall-clock (the 10-minute sleep threshold, the working
+        // pulse expiry) but the registry stays silent for a parked session, so nothing
+        // else would ever re-evaluate it.
+        stateRecheck += 1
+        if stateRecheck % 30 == 0, state != .celebrating, traversal == nil {
+            let mapped = mappedState()
+            if mapped != state { applyState(mapped, animated: true) }
+        }
         tickDance(now: now)
         if traversal != nil {          // a traversal owns placement until it lands
             stepTraversal(dt: 1.0 / 30.0)
@@ -1290,6 +1300,16 @@ final class PetView: NSView {
 
     /// Forget the current edge position — the next tick re-seats the crab on its ring.
     /// Used when a crab is moved to a different display.
+    /// The ring changes at runtime (Space switches, resolution, the Dock). A crab that
+    /// isn't crawling never re-applies its position on its own, so the one waiting on your
+    /// permission would hang detached from the edge — the worst possible one to lose.
+    func setRoamArea(_ area: RoamArea) {
+        guard area != roamArea else { return }
+        roamArea = area
+        currentSegment = -1
+        if traversal == nil && perimT >= 0 { applyPerimeterPosition() }
+    }
+
     func resetPlacement() {
         perimT = -1
         currentSegment = -1

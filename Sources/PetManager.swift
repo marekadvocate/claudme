@@ -92,6 +92,7 @@ final class PetManager {
         let t = Timer.scheduledTimer(withTimeInterval: 1.0 / 30.0, repeats: true) { [weak self] _ in
             self?.tick()
         }
+        t.tolerance = 0.008                     // let the scheduler coalesce our wakeups
         RunLoop.main.add(t, forMode: .common)
         tickTimer = t
 
@@ -147,7 +148,7 @@ final class PetManager {
                 pet.resetPlacement()
             }
             petOverlay[id] = idx
-            pet.roamArea = overlay.roamArea   // pet re-derives its edge position next tick
+            pet.setRoamArea(overlay.roamArea)   // re-seats even a crab that isn't crawling
         }
     }
 
@@ -279,6 +280,7 @@ final class PetManager {
     private var tickCount = 0
 
     private func tick() {
+        guard !pets.isEmpty else { return }     // nothing to animate, don't burn the CPU
         let now = CACurrentMediaTime()
         for pet in pets.values {
             pet.tick(now: now)

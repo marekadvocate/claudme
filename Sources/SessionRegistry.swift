@@ -103,23 +103,38 @@ final class SessionRegistry {
         let stamp = "\(size)-\(mtime)"
         if let cached = modelCache[sessionId], cached.stamp == stamp { return cached.model }
 
+        // Grepping for the last `"model":"` was wrong: transcripts also contain that string
+        // in <synthetic> records, subagent-spawn entries and even MCP tool arguments, so the
+        // crab's surname would flip to the fallback mid-session. Parse real records instead.
         var model: String?
-        if let fh = try? FileHandle(forReadingFrom: url) {
+        for window in [UInt64(65536), 262144, 1 << 20] where model == nil {
+            guard let fh = try? FileHandle(forReadingFrom: url) else { break }
             defer { try? fh.close() }
-            let tailLength: UInt64 = 65536
-            if size > tailLength { try? fh.seek(toOffset: size - tailLength) }
-            if let data = try? fh.readToEnd() {
-                let text = String(decoding: data, as: UTF8.self)
-                if let r = text.range(of: "\"model\":\"", options: .backwards) {
-                    let after = text[r.upperBound...]
-                    if let end = after.firstIndex(of: "\"") {
-                        model = String(after[..<end])
-                    }
-                }
-            }
+            if size > window { try? fh.seek(toOffset: size - window) }
+            guard let data = try? fh.readToEnd() else { break }
+            model = Self.lastAssistantModel(in: String(decoding: data, as: UTF8.self))
+            if window >= size { break }          // already read the whole file
         }
+
+        // Never let a transient miss downgrade a name we already resolved.
+        if model == nil, let previous = modelCache[sessionId]?.model { model = previous }
         modelCache[sessionId] = (stamp, model)
         return model
+    }
+
+    /// Walks JSONL backwards and returns the model of the newest genuine assistant record.
+    private static func lastAssistantModel(in text: String) -> String? {
+        for line in text.split(separator: "\n", omittingEmptySubsequences: true).reversed() {
+            guard line.first == "{",
+                  let obj = (try? JSONSerialization.jsonObject(with: Data(line.utf8))) as? [String: Any],
+                  obj["type"] as? String == "assistant",
+                  let message = obj["message"] as? [String: Any],
+                  let name = message["model"] as? String,
+                  name.hasPrefix("claude-")      // rejects <synthetic> and tool arguments
+            else { continue }
+            return name
+        }
+        return nil
     }
 
     private static func alive(_ pid: Int32) -> Bool {
