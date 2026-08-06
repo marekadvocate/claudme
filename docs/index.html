@@ -205,7 +205,7 @@
     html,body{height:100%;overflow:hidden}
     .track{
       display:flex;height:calc(100vh - 38px);overflow-x:auto;overflow-y:hidden;
-      scroll-snap-type:x mandatory;scroll-behavior:smooth;
+      scroll-snap-type:x mandatory;
       scrollbar-width:thin;scrollbar-color:var(--line) transparent
     }
     .track::-webkit-scrollbar{height:10px}
@@ -231,6 +231,12 @@
     @keyframes nudge{0%,100%{transform:translateX(0)}50%{transform:translateX(5px)}}
   }
   .hint{display:none}
+  @media (prefers-reduced-motion:no-preference){
+    .track > section .grid{margin-top:.9rem;gap:.65rem}
+    .track > section .card{padding:.85rem}
+    .track > section pre.code{font-size:.78rem}
+    .track > section .lede{font-size:.97rem}
+  }
   @media (prefers-reduced-motion:reduce){ .crab{transition:none!important} }
   /* ================= the page is a desktop =================
      Every panel is a window sitting on it: two-pixel bevels, a real title bar,
@@ -501,7 +507,7 @@
       <div class="card"><span class="ico">🎩</span><h3>Unique colours</h3><p>Each live crab wears a differently coloured fedora, matching its dot in the menubar. Learn them once and you never need the label.</p></div>
       <div class="card"><span class="ico">🍺</span><h3>A life of its own</h3><p>They greet each other in passing, take beer breaks, clink glasses with neighbours and do a stadium wave when the last busy session finishes.</p></div>
       <div class="card"><span class="ico">🖱️</span><h3>Click to jump</h3><p>Click a crab and the terminal running that session comes to the front. Right-click for its working directory and status.</p></div>
-      <div class="card"><span class="ico">🌍</span><h3>Speaks your language</h3><p>Eighteen languages out of the box — each written in its own crime-fiction register, not translated. Adding one is a single pull request.</p></div>
+      <div class="card"><span class="ico">🌍</span><h3>Speaks your language</h3><p>Nineteen languages out of the box, each written in its own crime-fiction register, not translated — plus a street-talk version of every one.</p></div>
     </div>
   </div></div></div>
 </section>
@@ -536,7 +542,7 @@ open build/Claudme.app</pre>
       tools, you can build it.
     </p>
     <div class="grid">
-      <div class="card"><span class="ico">🌍</span><h3>Add a language</h3><p>One entry in <code>Quips.swift</code>. Don't translate the English — write what a mobster would actually say in your language. Eighteen so far.</p></div>
+      <div class="card"><span class="ico">🌍</span><h3>Add a language</h3><p>One entry in <code>Quips.swift</code>. Don't translate the English — write what a mobster would actually say in your language. Nineteen so far, each with a street-talk twin.</p></div>
       <div class="card"><span class="ico">🎭</span><h3>Add an idle behaviour</h3><p>Copy the shape of the beer break or the balloon ride. Keep it rare — anything seen more than a few times an hour becomes noise.</p></div>
       <div class="card"><span class="ico">🏛️</span><h3>Add an era</h3><p>A given-name pool in <code>Naming.swift</code> plus headwear and shell markings in <code>PetView.swift</code>. Six exist; the timeline has room.</p></div>
     </div>
