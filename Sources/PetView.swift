@@ -104,6 +104,10 @@ final class PetView: NSView {
     private var currentAngle: CGFloat = 0
     private var currentScale: CGFloat = 1
     private var currentSegment = -1
+    /// how long the crab has been settled in its sleeping spot, 0 while it is walking
+    private var restingSince: CFTimeInterval = 0
+    /// nil until the first shift; then the floor position it has chosen for itself
+    private var sleepBed: CGFloat?
 
     // behavior — crawl along the screen edge ring
     private var perimT: CGFloat = -1
@@ -1293,10 +1297,28 @@ final class PetView: NSView {
 
     /// sleeping pets crawl the shortest way around the ring down to the bottom edge
     private func crawlTowardBottom() {
-        let delta = Self.shortestDelta(from: perimT, to: nearestBottomT, length: perimeterLength)
-        guard abs(delta) > 3 else { return }   // resting
+        let delta = Self.shortestDelta(from: perimT, to: sleepingSpotT, length: perimeterLength)
+        guard abs(delta) > 3 else { rest(); return }
+        restingSince = 0
         slideDir = delta > 0 ? 1 : -1
         crawl(by: min(70.0 / 30.0, abs(delta)))
+    }
+
+    /// A crab that has been asleep in the same patch for a minute gets sick of it, says
+    /// so, and shuffles off to a different stretch of floor. Without this a parked
+    /// session is a statue in one corner for the rest of the day.
+    private func rest() {
+        let now = CACurrentMediaTime()
+        if restingSince == 0 { restingSince = now; return }
+        guard now - restingSince > 60 else { return }
+        restingSince = 0
+        // somewhere genuinely else: at least a fifth of the floor away
+        let w = max(1, roamArea.maxX - roamArea.minX)
+        var next = CGFloat.random(in: 0...w)
+        if let bed = sleepBed, abs(next - bed) < w / 5 { next = w - next }
+        sleepBed = next
+        bubble.show(Quips.random(.grumble), for: 2.6)
+        smallHop()
     }
 
     // MARK: - Perimeter geometry
@@ -1308,8 +1330,12 @@ final class PetView: NSView {
     }
 
     /// Each crab gets its own patch of floor, or they all pile into the same corner.
-    private var nearestBottomT: CGFloat {
+    /// Where this crab sleeps. Starts under wherever its terminal is, offset by a
+    /// per-session amount so two crabs don't pile into the same corner, and moves
+    /// whenever `rest()` decides it has lain there long enough.
+    private var sleepingSpotT: CGFloat {
         let w = max(1, roamArea.maxX - roamArea.minX)
+        if let bed = sleepBed { return min(max(bed, 0), w) }
         let bed = CGFloat(Naming.hash(sessionId) % 140)
         return min(max(frame.origin.x - roamArea.minX + bed - 70, 0), w)
     }

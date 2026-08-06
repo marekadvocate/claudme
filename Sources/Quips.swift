@@ -22,6 +22,7 @@ enum QuipKind {
     case greeting      // two crabs passing each other
     case compacting
     case compacted
+    case grumble       // sick of this patch of floor, moving on
 }
 
 enum Lang: String, CaseIterable {
@@ -110,6 +111,7 @@ enum Quips {
 
     private static let table: [Lang: [QuipKind: [String]]] = [
         .en: [
+            .grumble: ["Screw this corner.", "I'm done here, boss.", "Somebody else can watch it.", "That's me for tonight.", "Not my problem now."],
             .done: ["It's done, boss.", "Taken care of.", "Clean job.", "Handled.", "No witnesses.", "That's that.", "Job's finished.", "Like we never touched it."],
             .working: ["On it.", "Working.", "Doing the rounds.", "Almost there.", "…"],
             .waiting: ["Boss? A word.", "Waiting on you.", "Say the word.", "Need your blessing.", "I ain't moving 'til you say."],
@@ -123,6 +125,7 @@ enum Quips {
             .sleeping: ["z Z"],
         ],
         .sk: [
+            .grumble: ["Serem na tento kút.", "Ja tu končím, šéfe.", "Nech to stráži niekto iný.", "Pre dnes som skončil.", "Už to nie je môj problém."],
             .done: ["Hotovo, šéfe.", "Vybavené.", "Čistá robota.", "Postarané.", "Žiadni svedkovia.", "A je to.", "Šlus.", "Ani stopa po nás."],
             .working: ["Makám na tom.", "Robím.", "Obchádzam terén.", "Už to skoro je.", "…"],
             .waiting: ["Šéfe? Na slovíčko.", "Čakám na teba.", "Povedz slovo.", "Potrebujem požehnanie.", "Nepohnem sa bez teba."],
@@ -136,6 +139,7 @@ enum Quips {
             .sleeping: ["z Z"],
         ],
         .cs: [
+            .grumble: ["Seru na tenhle kout.", "Já tu končím, šéfe.", "Ať to hlídá někdo jinej.", "Pro dnešek jsem skončil.", "Už to není můj problém."],
             .done: ["Hotovo, šéfe.", "Vyřízeno.", "Čistá práce.", "Postaráno.", "Žádní svědci.", "A je to.", "Šlus.", "Ani stopa po nás."],
             .working: ["Makám na tom.", "Dělám.", "Obcházím terén.", "Už to skoro je.", "…"],
             .waiting: ["Šéfe? Na slovíčko.", "Čekám na tebe.", "Řekni slovo.", "Potřebuju požehnání.", "Nehnu se bez tebe."],
@@ -149,6 +153,7 @@ enum Quips {
             .sleeping: ["z Z"],
         ],
         .de: [
+            .grumble: ["Ich hab die Ecke satt.", "Für mich ist Feierabend.", "Soll ein anderer aufpassen.", "Nicht mehr mein Problem.", "Ich bin raus, Chef."],
             .done: ["Erledigt, Chef.", "Ist geregelt.", "Keine Zeugen.", "Sauber gemacht.", "Niemand sah was.", "War ein Klacks.", "Abgehakt, Chef.", "Problem ist weg."],
             .working: ["Bin dran.", "Läuft, Chef.", "Wird gemacht.", "Kleinen Moment.", "…"],
             .waiting: ["Chef? Kurz mal.", "Ein Wort, Chef.", "Brauch dein Okay.", "Chef, hörst du?", "Grünes Licht?"],
@@ -162,6 +167,7 @@ enum Quips {
             .sleeping: ["z Z"],
         ],
         .el: [
+            .grumble: ["Βαρέθηκα εδώ πέρα.", "Εγώ τελείωσα, αρχηγέ.", "Ας το φυλάει άλλος.", "Δεν με αφορά πια.", "Σχόλασα."],
             .done: ["Έγινε, αρχηγέ.", "Καθαρή δουλειά.", "Τακτοποιήθηκε.", "Κανένα ίχνος.", "Ήσυχα και ωραία.", "Δεν πήρε κανείς χαμπάρι.", "Στην εντέλεια.", "Άλλο τίποτα;"],
             .working: ["…", "Δουλεύω το θέμα.", "Μη με ζορίζεις.", "Ησυχία, το ψήνω.", "Το 'χω, το 'χω."],
             .waiting: ["Δώσε το οκ, αρχηγέ.", "Περιμένω εντολή.", "Εσύ λες, εγώ κάνω.", "Την ευλογία σου.", "Πες μου ναι."],
@@ -175,6 +181,7 @@ enum Quips {
             .sleeping: ["z Z"],
         ],
         .es: [
+            .grumble: ["Me harté de esta esquina.", "Yo aquí terminé, jefe.", "Que vigile otro.", "Ya no es mi problema.", "Por hoy lo dejo."],
             .done: ["Hecho, jefe.", "Ya está.", "Trabajo limpio.", "Sin testigos.", "Nadie vio nada.", "Como si nada.", "Asunto resuelto.", "Ni rastro nuestro."],
             .working: ["En ello.", "Manos a la obra.", "Dando una vuelta.", "Ya casi está.", "…"],
             .waiting: ["¿Jefe? Un momento.", "Te espero.", "Tú dirás.", "Necesito tu bendición.", "Sin tu permiso, nada."],
@@ -188,6 +195,7 @@ enum Quips {
             .sleeping: ["z Z"],
         ],
         .fr: [
+            .grumble: ["J'en ai marre de ce coin.", "Moi j'ai fini, patron.", "Qu'un autre surveille.", "C'est plus mon problème.", "Pour moi c'est terminé."],
             .done: ["C'est réglé, patron.", "Emballé, c'est pesé.", "Du travail propre.", "Sans témoins.", "Personne n'a rien vu.", "L'affaire est faite.", "Nickel.", "Aucune trace."],
             .working: ["Je m'en occupe.", "Ça bosse.", "Je fais le tour.", "Presque fini.", "…"],
             .waiting: ["Patron ? Deux mots.", "J'attends votre feu vert.", "Dites un mot.", "Il me faut votre aval.", "Je bouge pas sans vous."],
@@ -201,6 +209,7 @@ enum Quips {
             .sleeping: ["z Z"],
         ],
         .hi: [
+            .grumble: ["इस कोने से ऊब गया।", "मेरा काम खत्म, बॉस।", "कोई और देखे।", "अब मेरी बला से।", "आज के लिए बस।"],
             .done: ["काम हो गया, भाई।", "काम तमाम।", "सफ़ाई हो गई।", "निपटा दिया।", "कोई गवाह नहीं।", "बस, ख़तम।", "एकदम साफ़।", "जैसे हुआ ही नहीं।"],
             .working: ["लगा हुआ हूँ।", "काम चालू है।", "गश्त पे हूँ।", "बस थोड़ा और।", "…"],
             .waiting: ["भाई? एक बात।", "आपका इंतज़ार है।", "हुक्म करो।", "इजाज़त चाहिए।", "आप कहो, तब।"],
@@ -214,6 +223,7 @@ enum Quips {
             .sleeping: ["z Z"],
         ],
         .it: [
+            .grumble: ["Basta con questo angolo.", "Io ho finito, capo.", "Ci pensi un altro.", "Non è più affar mio.", "Per stasera ho chiuso."],
             .done: ["Fatto, capo.", "Sistemato.", "Lavoro pulito.", "Nessun testimone.", "Nessuno ha visto niente.", "Cosa fatta capo ha.", "Tutto a posto.", "Manco una traccia."],
             .working: ["Ci penso io.", "Sto lavorando.", "Faccio il giro.", "Ci siamo quasi.", "…"],
             .waiting: ["Capo, due parole.", "Aspetto un cenno.", "Dimmi tu.", "Mi serve la benedizione.", "Non muovo un dito."],
@@ -227,6 +237,7 @@ enum Quips {
             .sleeping: ["z Z"],
         ],
         .ja: [
+            .grumble: ["この隅はもう飽きた", "俺は上がりだ、親父", "誰か代われ", "もう知らん", "今日はここまでだ"],
             .done: ["終わりやした、親分", "片付けやした", "カタはつけました", "始末しときやした", "キレイに掃除済み", "証拠は残してねぇ", "お安いご用で", "完璧でさぁ"],
             .working: ["やってやす", "仕事中でさぁ", "…", "今、詰めてやす", "もうちょい待ってくんな"],
             .waiting: ["親分、ちょいと", "親分、お耳を", "やっていいですかい", "お指図を", "どうしやしょう"],
@@ -240,6 +251,7 @@ enum Quips {
             .sleeping: ["z Z"],
         ],
         .ko: [
+            .grumble: ["이 구석 지겹다.", "저는 여기까지입니다.", "딴 놈이 지켜라.", "이제 내 일 아니다.", "오늘은 끝."],
             .done: ["끝냈습니다, 형님", "처리했습니다", "깔끔하게 정리", "뒤탈 없습니다", "목격자 없습니다", "손 좀 봤습니다", "다 묻었습니다", "걱정 마이소, 형님"],
             .working: ["하고 있습니다", "작업 중입니다", "…", "손보는 중", "곧 됩니다, 형님"],
             .waiting: ["형님, 잠깐만", "형님, 한 말씀", "지시 기다립니다", "허락만 주십쇼", "어떻게 할까요?"],
@@ -253,6 +265,7 @@ enum Quips {
             .sleeping: ["z Z"],
         ],
         .nl: [
+            .grumble: ["Ik baal van deze hoek.", "Ik ben klaar, baas.", "Laat een ander kijken.", "Niet meer mijn probleem.", "Voor vandaag klaar."],
             .done: ["Geregeld, baas.", "Het is gepiept.", "Geen getuigen.", "Netjes opgeruimd.", "Klaar is Kees.", "Niemand zag wat.", "Makkie, baas.", "Weg is weg."],
             .working: ["Bezig, baas.", "Komt voor elkaar.", "Ik regel het.", "Momentje.", "…"],
             .waiting: ["Baas? Effe wat.", "Eén woordje, baas.", "Jouw fiat, baas?", "Mag het, baas?", "Baas, hoor je me?"],
@@ -266,6 +279,7 @@ enum Quips {
             .sleeping: ["z Z"],
         ],
         .pl: [
+            .grumble: ["Mam dość tego kąta.", "Ja kończę, szefie.", "Niech inny pilnuje.", "To już nie mój problem.", "Na dziś koniec."],
             .done: ["Załatwione, szefie.", "Po robocie.", "Czysto.", "Bez świadków.", "Leży.", "Grzecznie poszło.", "Masz to jak w banku.", "Temat zamknięty."],
             .working: ["Robi się.", "Działamy.", "Kręcę temat.", "…", "Jestem na temacie."],
             .waiting: ["Szefie, na słówko.", "Daj cynk.", "Czekam na znak.", "Kiwnij głową.", "Twoja decyzja, szefie."],
@@ -279,6 +293,7 @@ enum Quips {
             .sleeping: ["z Z"],
         ],
         .pt: [
+            .grumble: ["Cansei desse canto.", "Eu terminei, chefe.", "Que outro vigie.", "Já não é problema meu.", "Por hoje chega."],
             .done: ["Tá feito, chefe.", "Resolvido.", "Serviço limpo.", "Sem testemunha.", "Eu nem tava lá.", "Tá tudo certo.", "Tá limpo, chefia.", "Pode conferir."],
             .working: ["Tô nessa.", "Trabalhando.", "Dando um rolê.", "Quase lá.", "…"],
             .waiting: ["Chefe? Uma palavrinha.", "Tô te esperando.", "É só falar.", "Preciso da sua bênção.", "Só ando se mandar."],
@@ -292,6 +307,7 @@ enum Quips {
             .sleeping: ["z Z"],
         ],
         .ru: [
+            .grumble: ["Надоел мне этот угол.", "Я закончил, шеф.", "Пусть другой сторожит.", "Уже не моя забота.", "На сегодня всё."],
             .done: ["Готово, шеф.", "Вопрос решён.", "Чисто сработано.", "Без свидетелей.", "Всё пучком.", "Дело сделано.", "Как заказывали.", "Тип-топ, босс."],
             .working: ["Работаю.", "Уже в теме.", "Решаю вопрос.", "…", "Кручусь."],
             .waiting: ["Шеф, на два слова.", "Жду отмашки.", "Дай добро.", "Твоё слово, босс.", "Тут дело такое…"],
@@ -305,6 +321,7 @@ enum Quips {
             .sleeping: ["z Z"],
         ],
         .sv: [
+            .grumble: ["Jag är trött på hörnet.", "Jag är klar, chefen.", "Nån annan får vakta.", "Inte mitt problem längre.", "Slut för idag."],
             .done: ["Fixat, boss.", "Det är ordnat.", "Inga vittnen.", "Städat och klart.", "Ingen såg nåt.", "En barnlek.", "Klart som korvspad.", "Problemet är borta."],
             .working: ["Jobbar på det.", "Jag fixar det.", "På gång, boss.", "Ett ögonblick.", "…"],
             .waiting: ["Boss? Ett ord.", "Behöver ditt ok.", "Grönt ljus, boss?", "Boss, hör du mig?", "Får jag, boss?"],
@@ -318,6 +335,7 @@ enum Quips {
             .sleeping: ["z Z"],
         ],
         .tr: [
+            .grumble: ["Bu köşeden bıktım.", "Ben bitirdim reis.", "Başkası baksın.", "Artık benim sorunum değil.", "Bugünlük bu kadar."],
             .done: ["Halloldu reis.", "İş bitti.", "Temiz iş.", "İcabına bakıldı.", "Tanık yok.", "Tamamdır.", "Sildim süpürdüm.", "Hiç uğramadık bile."],
             .working: ["Hallediyorum.", "Çalışıyorum.", "Tur atıyorum.", "Az kaldı.", "…"],
             .waiting: ["Reis, bir çift laf.", "Seni bekliyorum.", "Emret reis.", "Onayını bekliyorum.", "Sen demeden kıpırdamam."],
@@ -331,6 +349,7 @@ enum Quips {
             .sleeping: ["z Z"],
         ],
         .uk: [
+            .grumble: ["Набрид мені цей кут.", "Я закінчив, шефе.", "Хай інший вартує.", "Вже не мій клопіт.", "На сьогодні все."],
             .done: ["Зроблено, шефе.", "Питання закрите.", "Без свідків.", "Чисто спрацював.", "Все як треба.", "Тихо і красиво.", "Як просили, шефе.", "Ніхто нічого не бачив."],
             .working: ["Роблю.", "Працюємо.", "Вже в темі.", "…", "Кручусь, шефе."],
             .waiting: ["Шефе, на два слова.", "Чекаю відмашки.", "Дай добро.", "Твоє слово, босе.", "Кивни — і зроблю."],
@@ -344,6 +363,7 @@ enum Quips {
             .sleeping: ["z Z"],
         ],
         .zh: [
+            .grumble: ["这角落待腻了", "我收工了，大哥", "让别人看着吧", "不关我事了", "今天到此为止"],
             .done: ["办妥了，大哥", "搞定收工", "干净利落", "手尾干净", "没人看见", "小菜一碟", "大哥放心", "全清了"],
             .working: ["正在办", "忙着呢", "…", "快好了，大哥", "别催，大哥"],
             .waiting: ["大哥，借一步", "等您示下", "大哥，请示", "要不要动手？", "您说了算"],

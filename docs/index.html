@@ -32,6 +32,7 @@
     --line:#8d877f; --line2:#b8b2a9;
     --ink:#151311; --dim:#4b4640; --faint:#6f6960;
     --crab:#b4441c; --gold:#8a6412;
+    --taskbar:0px;
     --font:ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,sans-serif;
     --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,monospace;
   }
@@ -201,35 +202,24 @@
      whole subject lives along the edges of a display. Anything narrow — phones, and
      anyone who prefers reduced motion — keeps ordinary vertical scrolling, because
      sideways on a phone is miserable. */
-  @media (prefers-reduced-motion:no-preference){
-    html,body{height:100%;overflow:hidden}
-    .track{
-      display:flex;height:calc(100vh - 38px);overflow-x:auto;overflow-y:hidden;
-      scroll-snap-type:x mandatory;
-      scrollbar-width:thin;scrollbar-color:var(--line) transparent
-    }
-    .track::-webkit-scrollbar{height:10px}
-    .track::-webkit-scrollbar-thumb{background:var(--line);border-radius:5px}
-    .track > header,.track > section,.track > footer{
-      flex:0 0 100vw;height:100%;overflow-y:auto;scroll-snap-align:start;
-      display:flex;flex-direction:column;justify-content:center;padding:1.25rem 0
-    }
-    .track > header{justify-content:flex-start;padding-top:clamp(1.5rem,4vh,3rem);overflow:hidden}
-    /* The demo screen is the only elastic thing in the hero: let it take whatever
-       height is left over instead of forcing a 16/10 box the panel can't contain. */
-    .track > header > .wrap{flex:1 1 auto;min-height:0;display:flex;flex-direction:column}
-    .track > header .stage{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;margin-top:1rem}
-    .track > header .screen{aspect-ratio:auto;flex:1 1 auto;min-height:0;width:100%}
-    .track > footer{justify-content:center}
-    .hint{
-      position:fixed;right:1.1rem;bottom:1rem;z-index:20;
-      font:600 .72rem/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;
-      color:var(--faint);background:var(--panel);border:1px solid var(--line);
-      border-radius:999px;padding:.45rem .8rem;pointer-events:none;
-      animation:nudge 2.4s ease-in-out infinite
-    }
-    @keyframes nudge{0%,100%{transform:translateX(0)}50%{transform:translateX(5px)}}
+  /* Vertical page. Each screen is a full viewport tall and simply scrolls. */
+  .track > header,.track > section,.track > footer{
+    min-height:100dvh;display:flex;flex-direction:column;justify-content:center;padding:0
   }
+  .track > header{justify-content:flex-start}
+  .track > header > .wrap,
+  .track > section > .wrap,
+  .track > footer > .wrap{
+    width:100%;max-width:none;height:auto;min-height:100dvh;overflow:visible;
+    display:flex;flex-direction:column;justify-content:center;
+    padding:clamp(1rem,3vh,2rem) clamp(1.25rem,4vw,3.5rem);
+  }
+  .track > header > .wrap{justify-content:flex-start;overflow-x:clip}
+  .track > header .stage{
+    flex:1 1 auto;min-height:0;display:flex;margin-top:1rem;
+    width:100vw;margin-left:50%;transform:translateX(-50%)
+  }
+  .track > header .screen{flex:1 1 auto;min-height:min(70vh,100%);width:100%;height:auto}
   .hint{display:none}
   @media (prefers-reduced-motion:no-preference){
     .track > section .grid{margin-top:.9rem;gap:.65rem}
@@ -255,29 +245,14 @@
     box-shadow:inset 1px 1px 0 var(--sh), inset -1px -1px 0 var(--lt);
   }
 
-  /* --- window --- */
+  /* Panels are full-bleed screens: no frame, no title bar, nothing between the
+     content and the edge. */
   .track > header > .wrap,
   .track > section > .wrap,
   .track > footer > .wrap{
-    position:relative;background:var(--face);padding:2.35rem 1.5rem 1.4rem;
-    border:2px solid;border-color:var(--hi) var(--dk) var(--dk) var(--hi);
-    box-shadow:inset 1px 1px 0 var(--lt), inset -1px -1px 0 var(--sh),
-               6px 6px 0 rgba(0,0,0,.22);
-    border-radius:0;
-  }
-  /* title bar and its buttons, drawn without touching the markup */
-  .track > * > .wrap::before{
-    content:attr(data-w);position:absolute;left:3px;right:3px;top:3px;height:26px;
-    display:flex;align-items:center;padding:0 .55rem;
-    background:linear-gradient(90deg,var(--title1),var(--title2));
-    color:#fff;font:700 .78rem/1 var(--font);letter-spacing:.02em;
-  }
-  .track > * > .wrap::after{
-    content:"_  □  ✕";position:absolute;right:6px;top:6px;height:20px;
-    display:flex;align-items:center;padding:0 .45rem;
-    background:var(--face);color:var(--ink);
-    font:700 .66rem/1 var(--mono);letter-spacing:.32em;
-    border:1px solid;border-color:var(--hi) var(--dk) var(--dk) var(--hi);
+    position:relative;background:transparent;border:0;box-shadow:none;border-radius:0;
+    width:100%;max-width:none;height:100%;overflow:auto;
+    padding:clamp(1rem,3vh,2.25rem) clamp(1.25rem,4vw,3.5rem);
   }
 
   h1,h2,h3{color:var(--ink)}
@@ -320,39 +295,254 @@
   .screen{border-radius:0;border:2px solid;border-color:var(--dk) var(--hi) var(--hi) var(--dk)}
 
   /* --- taskbar: also the horizontal navigation --- */
-  .taskbar{
-    position:fixed;left:0;right:0;bottom:0;height:38px;z-index:40;
-    display:flex;align-items:center;gap:4px;padding:3px 5px;background:var(--face);
-    border-top:2px solid var(--hi);
-  }
-  .taskbar .start{
-    display:flex;align-items:center;gap:.4rem;padding:.3rem .7rem;flex:none;cursor:pointer;
-    font:800 .82rem/1 var(--font);color:var(--ink);background:var(--face);
-    border:2px solid;border-color:var(--hi) var(--dk) var(--dk) var(--hi);
-  }
-  .taskbar .start img{width:16px;height:16px;image-rendering:pixelated}
-  .taskbar .tasks{display:flex;gap:3px;overflow:hidden;flex:1}
-  .taskbar .tasks button{
-    flex:0 1 148px;min-width:44px;text-align:left;padding:.3rem .55rem;cursor:pointer;
-    font:600 .75rem/1 var(--font);color:var(--ink);background:var(--face);
-    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-    border:2px solid;border-color:var(--hi) var(--dk) var(--dk) var(--hi);
-  }
-  .taskbar .tasks button[aria-current="true"]{
-    border-color:var(--dk) var(--hi) var(--hi) var(--dk);
-    background:repeating-linear-gradient(45deg,var(--lt) 0 2px,var(--face) 2px 4px);
-  }
-  .taskbar .tray{
-    flex:none;display:flex;align-items:center;gap:.45rem;padding:.3rem .7rem;
-    font:600 .75rem/1 var(--mono);color:var(--ink);
-    border:2px solid;border-color:var(--dk) var(--hi) var(--hi) var(--dk);
-  }
-  .taskbar .tray img{width:14px;height:14px;image-rendering:pixelated}
   @media (max-width:640px){
-    .taskbar .start span{display:none}
-    .taskbar .tasks button{flex:0 0 44px}
   }
 
+  /* ---- give the demo screen the room; it is the thing people came to see ----
+     The hero copy is compressed to what it needs and the screen takes the rest,
+     with a floor so it can never collapse to a strip on a short window. */
+  @media (prefers-reduced-motion:no-preference){
+    .track > header .hero{gap:1.15rem}
+    .track > header .logo{width:clamp(56px,5vw,74px)}
+    .track > header h1{font-size:clamp(1.5rem,3vw,2.15rem)}
+    .track > header .sub{font-size:.95rem;max-width:78ch;margin:.45rem 0 0}
+    .track > header .cta{margin-top:.85rem}
+    .track > header .cta .btn{padding:.5rem 1rem;font-size:.86rem}
+    .track > header .note{margin-top:.45rem;font-size:.76rem}
+    .track > header .stage{margin-top:.9rem}
+    .track > header .screen{min-height:240px}
+    .track > header .controls{margin-top:.6rem}
+    .track > header .controls.modes{margin-top:.7rem;padding-bottom:.6rem}
+  }
+
+  /* The playground is a caption under the demo, not the headline act. */
+  .track > header .controls button{
+    font:600 .74rem/1 var(--font);padding:.34rem .6rem;border-radius:4px
+  }
+  .track > header .controls{gap:.3rem}
+  .track > header .tog{font:600 .78rem var(--font)}
+  .track > header .tog .box{width:13px;height:13px}
+
+  /* ================= flat: no boxes, no frames, full height =================
+     Every screen is the same: content straight on the desk, edge to edge. The
+     panels that used to hold it were eating the height they were framing. */
+  .w{
+    background:none!important;border:0!important;box-shadow:none!important;
+    border-radius:0!important;margin:0 0 .4rem;overflow:visible
+  }
+  .w > .bar{
+    background:none!important;border:0!important;padding:0;height:auto;
+    margin-bottom:.9rem;gap:.55rem
+  }
+  .w > .bar .t{
+    background:none!important;padding:0;color:var(--crab);
+    font:600 .64rem/1 var(--mono);letter-spacing:.26em;text-transform:uppercase
+  }
+  .w > .bar .dots{display:none}
+  .w > .bar .fill{display:none}
+  .w > .body{padding:0}
+
+  /* the demo screen bleeds too — no frame around it either */
+  .screen{border:0!important;border-radius:0!important;box-shadow:none!important}
+
+  /* cards and code keep their surface but lose the heavy outline */
+  .card{border:1px solid rgba(255,255,255,.055)!important;box-shadow:none!important}
+  pre.code{border:0!important}
+  table{background:none!important}
+
+  /* ---- use the whole height ---- */
+  @media (prefers-reduced-motion:no-preference){
+    .track > header > .wrap,
+    .track > section > .wrap,
+    .track > footer > .wrap{
+      padding:clamp(.9rem,2.4vh,1.6rem) clamp(1.25rem,4vw,3.5rem);
+      display:flex;flex-direction:column;justify-content:center;
+    }
+    .track > header > .wrap{justify-content:flex-start}
+    /* the demo takes everything the copy doesn't need */
+    .track > header .stage{flex:1 1 auto;min-height:0;display:flex;flex-direction:column}
+    .track > header .screen{flex:1 1 auto;min-height:200px}
+  }
+
+  /* ---- the controls read as one line, not two stacks ---- */
+  .track > header .controls.modes{
+    display:flex;align-items:center;gap:1.1rem;
+    margin:.7rem 0 0;padding:0 0 .55rem;border-bottom:1px solid rgba(255,255,255,.06)
+  }
+  .track > header .controls:not(.modes){
+    display:flex;flex-wrap:wrap;align-items:center;gap:.3rem;margin-top:.55rem
+  }
+
+  /* the demo is the hero: edge to edge, 70% of the height.
+     The copy keeps the panel's padding; the screen breaks out of it. */
+  @media (prefers-reduced-motion:no-preference){
+    .track > header > .wrap{overflow-x:clip}
+    .track > header .stage{
+      flex:1 1 auto;min-height:0;display:flex;margin-top:1rem;
+      width:100vw;margin-left:50%;transform:translateX(-50%)
+    }
+    /* 70% is the floor, not the cap — the screen swallows whatever the copy leaves */
+    .track > header .screen{flex:1 1 auto;min-height:min(70vh,100%);width:100%;height:auto}
+  }
+  /* the credit lines now sit on the desktop itself */
+  .deskcredit{
+    position:absolute;left:26px;bottom:34px;z-index:2;margin:0;max-width:none;
+    white-space:nowrap;font:500 .7rem/1.7 var(--font);color:#6f6459;letter-spacing:.01em
+  }
+  .deskcredit a{color:#b0765c}
+  /* the 3D switch rides in the button row */
+  .cta{align-items:center}
+  .cta .tog{gap:.45rem}
+  .cta .tog .box{width:13px;height:13px}
+  .shuffle-hint{
+    margin-left:.7rem;font:500 .76rem/1 var(--mono);color:var(--faint);letter-spacing:.02em
+  }
+
+  /* ---- phones: the demo still gets 70% of the screen ----
+     Everything above it is compressed and the four controls stay on one line. */
+  @media (max-width:700px){
+    /* on a phone the hero reads as one centred column */
+    .track > header .hero{
+      flex-direction:column;align-items:center;text-align:center;gap:.5rem
+    }
+    .track > header .cta{justify-content:center}
+    .track > header .sub{margin-inline:auto}
+    .track > header .logo{width:44px}
+    .track > header h1{font-size:1.32rem;line-height:1.12}
+    .track > header .sub{font-size:.82rem;line-height:1.45;margin:.35rem 0 0;max-width:none}
+    .track > header .cta{gap:.35rem;margin-top:.6rem;flex-wrap:nowrap}
+    .track > header .cta .btn{
+      padding:.42rem .6rem;font-size:.76rem;white-space:nowrap;flex:0 1 auto;min-width:0
+    }
+    .track > header .cta .btn span:not(.box){display:none}
+    .shuffle-hint{display:none}
+    .track > header > .wrap{padding:.7rem .9rem}
+    .track > header .stage{margin-top:.6rem}
+    .track > header .screen{height:70dvh}
+    .deskcredit{left:12px;bottom:8px;font-size:.6rem;white-space:normal;max-width:88%}
+  }
+  /* shorter labels where the row is tight */
+  @media (max-width:700px){
+    #shuffle{font-size:0}
+    #shuffle::after{content:"Shuffle 🎲";font-size:.76rem}
+  }
+
+  /* a real segmented switch — the old one was a tick box crammed into a button */
+  /* the switch has to be exactly as tall as the buttons beside it */
+  .cta{align-items:stretch}
+  .cta > *{min-height:0}
+  .seg{
+    display:inline-flex;align-items:stretch;padding:3px;gap:3px;cursor:pointer;
+    background:#141110;border:1px solid #2e2925;border-radius:6px;
+    font:600 .78rem/1 var(--font);color:#8d8073;align-self:stretch;
+  }
+  .seg span{
+    padding:0 .75rem;border-radius:4px;display:grid;place-items:center;
+    transition:background-color .14s ease,color .14s ease;
+  }
+  .seg:not(.on) span:first-child,
+  .seg.on span:last-child{background:#d97757;color:#1a0f0a}
+  .seg:hover{border-color:#4a4038}
+
+  /* ---- phones: two full mock windows, legibly sized ---- */
+  @media (max-width:700px){
+    /* an older rule collapses the demo to a single window below 820px; on the hero we
+       want two, sized so the terminal text is still readable on a phone */
+    .track > header .w1{
+      display:block!important;left:5%!important;top:10%!important;
+      width:66%!important;height:30%!important
+    }
+    .track > header .w2{
+      display:block!important;left:29%!important;top:52%!important;
+      width:66%!important;height:28%!important
+    }
+    .track > header .w3{display:none!important}
+    /* and it forces a square aspect that fights the 70% height */
+    .track > header .screen{aspect-ratio:auto!important}
+    .track > header .win pre{font-size:10px;line-height:1.45}
+    .track > header .win .bar{height:18px;font-size:9px}
+  }
+
+  /* ---- voice ----
+     A newspaper serif for everything the page says, mono for the labels it prints.
+     Loaded from nowhere: these ship with macOS, Windows and most Linux desktops, so
+     the page still has no third-party request. The demo keeps its own UI fonts — it
+     is a screenshot of an operating system, not part of the page's voice. */
+  :root{
+    --display:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",
+              ui-serif,Georgia,"Times New Roman",serif;
+    --body:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",
+           ui-serif,Georgia,serif;
+  }
+  body{font-family:var(--body)}
+  h1,h2,h3{font-family:var(--display);letter-spacing:-.018em;font-weight:700}
+  h1{line-height:1.06}
+  .lede,.sub,.card p,td,p{font-family:var(--body)}
+  /* labels, counters and anything machine-printed stay mono */
+  .eyebrow,.note,th,.w > .bar .t,.shuffle-hint,.deskcredit{font-family:var(--mono)}
+  /* controls stay a UI font — a serif button reads as a mistake */
+  .btn,.controls button,.seg,.tog{font-family:var(--font)}
+
+  /* the demo is a screenshot: it keeps the system UI voice */
+  .screen,.screen *{font-family:var(--font)}
+  .screen pre,.screen .win pre{font-family:var(--mono)}
+  .deskcredit{font-family:var(--mono)}
+
+  /* ==== THEME:START ==== After Hours — The family works at night: a near-black desk lit by one warm lamp overhead, charcoal windows set in bone-warm type, and the crab's terracotta as the only colour in the room. */
+  :root{
+    --desk:#0a0908; --desk2:#050404;
+    --face:#171412; --hi:#2f2a25; --lt:#221e1a; --sh:#100e0c; --dk:#050404;
+    --field:#0d0b0a;
+    --title1:#221e1a; --title2:#191614; --title-ink:#dccfbd;
+    --bg:#0a0908; --panel:#171412; --panel2:#221e1a;
+    --line:#100e0c; --line2:#100e0c;
+    --ink:#efe6da; --dim:#b9ac9c; --faint:#8d8073;
+    --crab:#d97757; --gold:#e0a355;
+  }
+  body{background:radial-gradient(130% 100% at 50% 30%, rgba(0,0,0,0) 38%, rgba(0,0,0,.62) 100%), radial-gradient(1200px 760px at 50% -14%, rgba(217,119,87,.13), rgba(217,119,87,0) 70%), repeating-linear-gradient(0deg, rgba(255,228,197,.016) 0 1px, rgba(255,228,197,0) 1px 3px), linear-gradient(180deg, #0b0a09 0%, #050404 100%) #070605}
+  .btn,.controls button,.taskbar .start,.taskbar .tasks button{border-radius:4px;padding:.6rem 1.15rem;background:linear-gradient(180deg, #231f1c 0%, #1a1715 100%);color:#efe6da;border:1px solid #322c26;box-shadow:inset 0 1px 0 rgba(255,230,200,.07), 0 1px 2px rgba(0,0,0,.55);font-weight:600;letter-spacing:.005em;transition:background .13s ease, border-color .13s ease, box-shadow .13s ease, color .13s ease}
+  :root{--bg:#070605;--panel:#151312;--panel2:#1c1917;--line:#2a2521;--line2:#241f1b}
+  body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:.055;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/></filter><rect width='120' height='120' filter='url(%23n)'/></svg>");background-size:120px 120px}
+  .track .w{background:#131110;border:1px solid #241f1c;border-radius:4px;overflow:hidden;box-shadow:inset 0 1px 0 rgba(255,230,200,.035), 0 1px 2px rgba(0,0,0,.4)}
+  .track .w > .bar{background:linear-gradient(180deg, #1c1917 0%, #171413 100%);border-bottom:1px solid #241f1c;padding:.55rem .8rem}
+  .track .w > .bar .dots i{width:7px;height:7px;background:#3a332c}
+  .track .w > .bar .dots i:first-child{background:#d97757;box-shadow:0 0 8px rgba(217,119,87,.55)}
+  .track .w > .bar .t{background:transparent;color:#9c8f81;font:600 .68rem/1 var(--mono);letter-spacing:.16em;text-transform:uppercase}
+  .card{background:linear-gradient(180deg, #1d1917 0%, #181514 100%);border:1px solid #2a2521;border-radius:4px;box-shadow:inset 0 1px 0 rgba(255,230,200,.045), 0 1px 2px rgba(0,0,0,.45);transition:border-color .14s ease}
+  .card:hover{border-color:#3d342c}
+  pre.code{background:#0d0b0a;color:#d5c8b8;border:1px solid #262120;border-radius:4px;box-shadow:inset 0 1px 4px rgba(0,0,0,.7)}
+  pre.code .c{color:#7b6f63}
+  table{background:transparent}
+  th{background:transparent;color:#8d8073;border:0;border-bottom:1px solid #2f2924}
+  td{border-bottom:1px solid #221e1b}
+  blockquote{background:#1b1816;border-left:2px solid #d97757;border-radius:0 4px 4px 0;color:#cdbfae}
+  .fund{background:linear-gradient(180deg, #1d1917 0%, #181514 100%);border:1px solid #2a2521;border-radius:4px}
+  .meter{background:#0d0b0a;border:1px solid #2a2521;border-radius:3px;box-shadow:inset 0 2px 5px rgba(0,0,0,.75)}
+  .meter i{background:linear-gradient(90deg, #c9633f 0%, #e0a355 100%);box-shadow:0 0 14px rgba(224,163,85,.45)}
+  .meter span{color:#efe6da;text-shadow:0 1px 2px rgba(0,0,0,.85)}
+  .iban{background:#0d0b0a;border:1px dashed #3a322b;border-radius:4px;color:#b9ac9c;box-shadow:inset 0 1px 3px rgba(0,0,0,.6)}
+  .commits li{background:linear-gradient(180deg, #1c1917 0%, #171413 100%);border:1px solid #262120;border-radius:4px}
+  .commits .when{color:#8d8073}
+  .tog .box{background:#0d0b0a;border:1px solid #322c26;border-radius:3px;box-shadow:inset 0 1px 2px rgba(0,0,0,.65)}
+  .tog.on .box{background:#d97757;border-color:#e08a68;color:#1a0f0a;box-shadow:0 0 0 3px rgba(217,119,87,.16)}
+  a{color:#e08a68;text-underline-offset:3px;text-decoration-color:rgba(224,138,104,.38)}
+  a:hover{color:#f0a385;text-decoration-color:rgba(240,163,133,.7)}
+  .eyebrow{color:#e08a68}
+  .btn:hover, .controls button:hover{background:linear-gradient(180deg, #2a2522 0%, #201c19 100%);border-color:#453a31;color:#efe6da;transform:none}
+  .btn:active, .controls button:active{background:#151312;border-color:#322c26;box-shadow:inset 0 2px 4px rgba(0,0,0,.7);transform:none}
+  .btn-p{background:linear-gradient(180deg, #e08560 0%, #cf6740 100%);border-color:#e89madeup;color:#1a0f0a}
+  .btn-p{background:linear-gradient(180deg, #e08560 0%, #cf6740 100%);border:1px solid #ea9670;color:#1a0f0a;box-shadow:inset 0 1px 0 rgba(255,235,215,.35), 0 1px 2px rgba(0,0,0,.5), 0 0 24px -6px rgba(217,119,87,.55)}
+  .btn-p:hover{background:linear-gradient(180deg, #e8926e 0%, #d9744c 100%);border-color:#f0a683;filter:none;box-shadow:inset 0 1px 0 rgba(255,235,215,.4), 0 1px 2px rgba(0,0,0,.5), 0 0 32px -6px rgba(217,119,87,.7)}
+  .screen{border:1px solid #2a2521;border-radius:5px;box-shadow:inset 0 0 70px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,230,200,.05)}
+  .win .dot{filter:saturate(.45) brightness(.9)}
+  .dock i{filter:saturate(.45) brightness(.85)}
+  .g{color:#8faa86}
+  .hint{background:rgba(20,17,15,.9);border:1px solid #322c26;color:#a2958a;backdrop-filter:blur(8px)}
+  .track{scrollbar-color:#332c26 transparent}
+  .track::-webkit-scrollbar-thumb{background:#332c26;border-radius:5px}
+  :focus-visible{outline:2px solid #d97757;outline-offset:2px;border-radius:3px}
+  ::selection{background:rgba(217,119,87,.3);color:#fff5ec}
+  /* ==== THEME:END ==== */
 </style>
 </head>
 <body>
@@ -364,18 +554,16 @@
     <div>
     <h1>Your AI agents are a crime family</h1>
     <p class="sub">
-      Claudme gives every running Claude Code session a pixel crab that crawls the edge of
-      your screen. One glance tells you who just finished, who is stuck, and who is waiting
-      on you. Click one and its terminal comes to the front.
+      Every running Claude Code session becomes a pixel crab on the edge of your screen.
+      One glance tells you who finished, who is stuck, and who is waiting on you.
     </p>
     <div class="cta">
       <a class="btn btn-p" href="#install">Install it</a>
       <a class="btn btn-s" href="https://github.com/marekadvocate/claudme">★ GitHub</a>
+      <button data-toggle="mode" class="seg" aria-label="Toggle 3D crabs"><span>2D</span><span>3D</span></button>
+      <button id="shuffle" class="btn btn-s">Shuffle an action 🎲</button>
+      <span class="shuffle-hint" id="shuffleWhat">everything the real app does, on demand</span>
     </div>
-    <p class="note">macOS 13+ · native Swift · no Electron · no permissions · MIT</p>
-    <p class="note" style="margin-top:.35rem">
-      An independent community project — <a href="#disclaimer">not affiliated with Anthropic</a>
-    </p>
     </div></div>
 
     <div class="stage">
@@ -386,7 +574,10 @@
             <img src="logo.svg" alt="" style="height:13px;width:auto;image-rendering:crisp-edges">5</span><span>Wed 02:14</span></div>
         </div>
 
-        <div class="win" style="left:6%;top:16%;width:40%;height:46%">
+        <p class="deskcredit">macOS 13+ · native Swift · no Electron · no permissions · MIT<br>
+          An independent community project — <a href="#disclaimer">not affiliated with Anthropic</a></p>
+
+        <div class="win w1" style="left:7%;top:18%;width:34%;height:40%">
           <div class="bar"><i class="dot" style="background:#ff5f57"></i><i class="dot" style="background:#febc2e"></i><i class="dot" style="background:#28c840"></i>&nbsp;billing — claude</div>
           <pre><span class="d">&gt;</span> refactor the billing module
 <span class="o">✳</span> Thinking… <span class="d">(xhigh)</span>
@@ -395,46 +586,21 @@
 <span class="y">▶</span> running tests…</pre>
         </div>
 
-        <div class="win keep" style="left:50%;top:26%;width:42%;height:44%">
+        <div class="win keep w2" style="left:52%;top:24%;width:34%;height:38%">
           <div class="bar"><i class="dot" style="background:#ff5f57"></i><i class="dot" style="background:#febc2e"></i><i class="dot" style="background:#28c840"></i>&nbsp;maps — claude</div>
           <pre><span class="d">&gt;</span> add the map layer
 <span class="g">✓</span> Done in 4m 12s
 <span class="d">&gt;</span> <span class="o">▊</span></pre>
         </div>
 
-        <div class="win" style="left:20%;top:52%;width:36%;height:30%">
+        <div class="win w3" style="left:28%;top:56%;width:30%;height:26%">
           <div class="bar"><i class="dot" style="background:#ff5f57"></i><i class="dot" style="background:#febc2e"></i><i class="dot" style="background:#28c840"></i>&nbsp;infra — claude</div>
           <pre><span class="y">?</span> Allow <span class="o">rm -rf ./tmp</span>?
 <span class="d">  waiting for you…</span></pre>
         </div>
 
-        <div class="dock">
-          <i style="background:linear-gradient(145deg,#4a9eff,#1a6fd4)"></i>
-          <i style="background:linear-gradient(145deg,#3ddc84,#1a9e5a)"></i>
-          <i style="background:linear-gradient(145deg,#d97757,#a8482c)"></i>
-          <i style="background:linear-gradient(145deg,#f5c451,#c8952a)"></i>
-          <i style="background:linear-gradient(145deg,#8b7fd4,#5d4fa8)"></i>
-        </div>
       </div>
 
-      <div class="controls modes">
-        <button data-toggle="mode" class="tog"><span class="box">✓</span>3D crabs</button>
-        <button data-toggle="party" class="tog on"><span class="box">✓</span>Party mode 🎵</button>
-      </div>
-      <div class="controls">
-        <button data-act="done">Finished 🎉</button>
-        <button data-act="need">Needs you ✋</button>
-        <button data-act="trouble">Rate limit ⚠️</button>
-        <button data-act="beer">Beer 🍺</button>
-        <button data-act="clink">Clink 🍻</button>
-        <button data-act="subs">Subagents 👶</button>
-        <button data-act="spin">Spin 🌀</button>
-        <button data-act="rope">Rope 🪢</button>
-        <button data-act="rocket">Rocket 🚀</button>
-        <button data-act="compact">Compact 🗜️</button>
-        <button data-act="wave">Wave 🌊</button>
-      </div>
-      <p class="note">Everything the real app does, on demand — it runs on your actual screen edges.</p>
     </div>
   </div>
 </header>
@@ -600,8 +766,7 @@ open build/Claudme.app</pre>
 
 <section id="disclaimer">
   <div data-w="legal.txt" class="wrap"><div class="w"><div class="bar"><span class="dots"><i></i><i></i><i></i></span><span class="t">claudme</span><span class="fill"></span></div><div class="body">
-    <div style="background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--crab);
-                border-radius:12px;padding:1.5rem 1.7rem;max-width:70ch">
+<div style="max-width:70ch">
       <p style="margin:0 0 .8rem;font:600 .78rem/1 var(--mono);letter-spacing:.14em;
                 text-transform:uppercase;color:var(--crab)">Not an Anthropic product</p>
       <p style="margin:0;color:var(--dim);font-size:.95rem">
@@ -639,15 +804,10 @@ open build/Claudme.app</pre>
 
 </div>
 <div class="hint">scroll →</div>
-<div class="taskbar">
-  <button class="start" id="startBtn" type="button"><img src="logo.svg" alt=""><span>Start</span></button>
-  <div class="tasks" id="tasks"></div>
-  <div class="tray"><img src="logo.svg" alt=""><span id="trayClock">--:--</span></div>
-</div>
 <script>
 (() => {
   // crabs scale with the stage — five 3px-grid crabs would swamp a phone
-  const PX = innerWidth < 640 ? 2 : innerWidth < 900 ? 2.5 : 3;
+  const PX = innerWidth < 640 ? 3 : innerWidth < 900 ? 3.5 : 4.5;
   const GRID_W = 11;
   const CRAB = '#d97757', INK = '#1e1e1c';
   const CAPS = ['#1f3b8a','#0d9488','#f9cc15','#7c3aed','#17a34a','#ec4899','#0ea5e9','#dc2626'];
@@ -759,7 +919,9 @@ open build/Claudme.app</pre>
     const c = {
       el, cv, tag, bub, cap: CAPS[capIdx % CAPS.length], name,
       t, dir: Math.random()<.5?1:-1, speed: 14+Math.random()*14,
-      phase:0, seg:-1, state:'idle', until:0, babies:[], hop:0
+      phase:0, seg:-1, state:'idle', until:0, babies:[], hop:0,
+      // party mode is on by default, so the family is already dancing on load
+      seed: Math.random()*6.28, beat: 0, dance: partyOn && Math.random() < .7
     };
     draw(cv, c.cap, 0, false);
     return c;
@@ -788,11 +950,17 @@ open build/Claudme.app</pre>
     // nudge the body so its feet touch the edge, whatever the rotation
     const off = [[0,-H/2],[ -H/2,0],[0,H/2],[H/2,0]][seg];
     const hop = c.hop ? Math.sin(c.hop*Math.PI)*9 : 0;
-    const hx = seg===1 ? -hop : seg===3 ? hop : 0;
-    const hy = seg===0 ? -hop : seg===2 ? hop : 0;
+    const b = c.dance ? c.beat : 0;
+    const bob  = c.dance ? Math.abs(Math.sin(b)) * 7 : 0;   // away from the edge
+    const sway = c.dance ? Math.sin(b * 0.5) * 5 : 0;       // along it
+    const tilt = c.dance ? Math.sin(b * 0.5) * 7 : 0;
+    const lift = hop + bob;
+    const hx = seg===1 ? -lift : seg===3 ? lift : sway;
+    const hy = seg===0 ? -lift : seg===2 ? lift : sway;
 
     const bx = x + off[0] + hx, by = y + off[1] + hy;   // body centre in screen space
-    c.el.style.transform = `translate(${bx - W/2}px, ${by - H/2}px) rotate(${rot}deg)`;
+    c.el.style.transform =
+      `translate(${bx - W/2}px, ${by - H/2}px) rotate(${rot + tilt}deg)`;
 
     // On the ceiling the label hangs below the crab; everywhere else it sits above.
     // Both are clamped so they never run off the screen at a corner or a side wall.
@@ -821,6 +989,9 @@ open build/Claudme.app</pre>
         c.phase = (Math.floor(((c.t%1)+1)%1 * P / 7) & 1);
       }
       if (c.hop > 0) c.hop = Math.max(0, c.hop - dt*2.2);
+      // Party mode changes HOW they move, never what they're doing — the walk above
+      // already ran. Each crab keeps its own beat so the family isn't in lockstep.
+      if (c.dance) c.beat += dt * (2.2 + c.seed % 1.2);
       if (c.spin > 0){ c.spin = Math.max(0, c.spin - dt*0.9); }
       if (c.trav){
         c.travT = Math.min(1, c.travT + dt*0.45);
@@ -890,9 +1061,33 @@ open build/Claudme.app</pre>
   const LINES = {
     done:['It’s done, boss.','Taken care of.','Clean job.','No witnesses.'],
     need:['Boss? A word.','Waiting on you.','Say the word.'],
-    beer:['Ahh~','Salute.','That’s the stuff.']
+    beer:['Ahh~','Salute.','That’s the stuff.'],
+    // shift change: they've had enough of this corner
+    quit:['Fuck this work.','I’m done here, boss.','Screw this corner.',
+          'Somebody else can watch it.','That’s me for tonight.','Not my problem now.']
   };
   const pick = a => a[Math.floor(Math.random()*a.length)];
+
+  // ---- shift change ----
+  // Once a minute the family gets sick of where it is standing, grumbles, and walks off
+  // to another stretch of the edge. Staggered so they don't all announce it at once.
+  function shiftChange(){
+    [...crabs].sort(() => Math.random() - .5).forEach((c, i) => {
+      setTimeout(() => {
+        if (c.trav) return;                     // mid-rope or mid-rocket, leave it alone
+        say(c, pick(LINES.quit), 2400);
+        c.hop = 1;
+        setTimeout(() => {
+          // move to a genuinely different stretch, not two pixels along
+          let to = Math.random();
+          if (Math.abs(to - c.t) < .22) to = (c.t + .5) % 1;
+          c.trav = 'shift'; c.travT = 0; c.travFrom = c.t; c.travTo = to;
+          c.dir = Math.random() < .5 ? 1 : -1;
+        }, 700);
+      }, i * 420);
+    });
+  }
+  setInterval(shiftChange, 60000);
 
   // mode toggles: re-render every crab in the chosen style, or start/stop the party
   document.querySelectorAll('[data-toggle]').forEach(btn => {
@@ -910,9 +1105,31 @@ open build/Claudme.app</pre>
     });
   });
 
+  const ACTS = [
+    ['done','Finished 🎉'], ['need','Needs you ✋'], ['trouble','Rate limit ⚠️'],
+    ['beer','Beer 🍺'], ['clink','Clink 🍻'], ['subs','Subagents 👶'],
+    ['spin','Spin 🌀'], ['rope','Rope 🪢'], ['rocket','Rocket 🚀'],
+    ['compact','Compact 🗜️'], ['wave','Wave 🌊'],
+  ];
+  let lastAct = -1;
+  const shuffleBtn = document.getElementById('shuffle');
+  if (shuffleBtn) shuffleBtn.addEventListener('click', () => {
+    let i = Math.floor(Math.random() * ACTS.length);
+    if (ACTS.length > 1 && i === lastAct) i = (i + 1) % ACTS.length;  // never twice running
+    lastAct = i;
+    const label = document.getElementById('shuffleWhat');
+    if (label) label.textContent = ACTS[i][1];
+    runAct(ACTS[i][0]);
+  });
+
   document.querySelectorAll('.controls button[data-act]').forEach(btn => {
     btn.addEventListener('click', () => {
-      const act = btn.dataset.act;
+      runAct(act);
+    });
+  });
+
+  function runAct(act){
+    {
       const c = crabs[Math.floor(Math.random()*crabs.length)];
       const now = performance.now();
       if (act === 'done'){ c.state='party'; c.until=now+2600; c.hop=1; say(c, pick(LINES.done), 2600); confetti(c); }
@@ -939,8 +1156,8 @@ open build/Claudme.app</pre>
         [...crabs].sort((a,b)=>a.t-b.t).forEach((cc,i)=>
           setTimeout(()=>{ cc.hop = 1; }, i*130));
       }
-    });
-  });
+    }
+  }
 
   // a session finishes on its own every so often, so the page is alive
   setInterval(() => {
@@ -961,27 +1178,65 @@ open build/Claudme.app</pre>
     const track = document.querySelector('.track');
     const sideways = () => getComputedStyle(track).overflowX === 'auto'
                         && track.scrollWidth > track.clientWidth + 4;
+
+    // One continuous pan. The wheel feeds a target and a single animator eases the
+    // track towards it every frame, so a notched mouse wheel glides like a trackpad
+    // instead of stepping. Nothing snaps — the windows simply travel past.
+    let targetX = track.scrollLeft, running = false, rest = 0;
+    const maxX = () => Math.max(0, track.scrollWidth - track.clientWidth);
+
+    function run(){
+      const cur = track.scrollLeft, d = targetX - cur;
+      if (Math.abs(d) < .5){ track.scrollLeft = targetX; running = false; return; }
+      track.scrollLeft = cur + d * 0.14;        // exponential ease-out
+      requestAnimationFrame(run);
+    }
+    function glideTo(x){
+      targetX = Math.max(0, Math.min(maxX(), x));
+      if (document.hidden){ track.scrollLeft = targetX; running = false; return; }
+      if (!running){ running = true; requestAnimationFrame(run); }
+    }
+    // if anything else moves the track (scrollbar drag, a jump), don't fight it
+    track.addEventListener('scroll', () => { if (!running) targetX = track.scrollLeft; },
+                           { passive: true });
+
     addEventListener('wheel', e => {
       if (!sideways()) return;
       const panel = e.target.closest('.track > *');
-      // let a panel scroll itself first if its own content overflows
+      // a panel whose own content overflows scrolls itself first
       if (panel && panel.scrollHeight > panel.clientHeight + 2){
         const atTop = panel.scrollTop <= 0, atEnd =
           panel.scrollTop + panel.clientHeight >= panel.scrollHeight - 2;
         if (!(atTop && e.deltaY < 0) && !(atEnd && e.deltaY > 0)) return;
       }
-      if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;   // real horizontal gesture
+      const d = Math.abs(e.deltaY) > Math.abs(e.deltaX) ? e.deltaY : e.deltaX;
+      if (!d) return;
       e.preventDefault();
-      track.scrollLeft += e.deltaY;
+
+      // The pan is free, but it may never fly past a screen: the target is capped at
+      // one panel away from wherever we started the gesture. Keep scrolling and it
+      // advances screen by screen instead of blurring through six of them at once.
+      const w = track.clientWidth;
+      const from = Math.round(track.scrollLeft / w);
+      const lo = (from - 1) * w, hi = (from + 1) * w;
+      glideTo(Math.max(lo, Math.min(hi, targetX + d * 1.9)));
+
+      // Once the gesture stops, come to rest on a whole screen rather than between two.
+      clearTimeout(rest);
+      rest = setTimeout(() => {
+        glideTo(Math.round(track.scrollLeft / w) * w);
+      }, 140);
     }, { passive: false });
 
     addEventListener('keydown', e => {
       if (!sideways() || e.metaKey || e.ctrlKey) return;
-      const step = innerWidth;
-      if (e.key === 'ArrowRight' || e.key === 'PageDown') { track.scrollLeft += step; e.preventDefault(); }
-      if (e.key === 'ArrowLeft'  || e.key === 'PageUp')   { track.scrollLeft -= step; e.preventDefault(); }
-      if (e.key === 'Home') { track.scrollLeft = 0; e.preventDefault(); }
-      if (e.key === 'End')  { track.scrollLeft = track.scrollWidth; e.preventDefault(); }
+      const w = track.clientWidth, at = Math.round(track.scrollLeft / w);
+      const last = track.children.length - 1;
+      const go = i => { glideTo(Math.max(0, Math.min(last, i)) * w); e.preventDefault(); };
+      if (e.key === 'ArrowRight' || e.key === 'PageDown') go(at + 1);
+      if (e.key === 'ArrowLeft'  || e.key === 'PageUp')   go(at - 1);
+      if (e.key === 'Home') go(0);
+      if (e.key === 'End')  go(last);
     });
 
     // in-page anchors must move the track, not the (unscrollable) document
@@ -1254,75 +1509,6 @@ open build/Claudme.app</pre>
   requestAnimationFrame(frame);
 })();
 
-/* ---------- taskbar: one button per window, and it drives the horizontal track ---------- */
-(function taskbar(){
-  const track = document.querySelector('.track');
-  const host  = document.getElementById('tasks');
-  const clock = document.getElementById('trayClock');
-  if (!host) return;
-
-  const panels = [...document.querySelectorAll('.track > header, .track > section, .track > footer')];
-
-  // scrollTo({behavior:'smooth'}) is a no-op on this mandatory-snap container in Chrome,
-  // so drive scrollLeft directly and ease it here.
-  let anim = 0;
-  function glide(to){
-    if (!track) return;
-    cancelAnimationFrame(anim);
-    const from = track.scrollLeft, delta = to - from, t0 = performance.now(), ms = 420;
-    if (Math.abs(delta) < 2) return;
-    // rAF never fires in a background tab, so don't leave the jump half-done
-    if (document.hidden || matchMedia('(prefers-reduced-motion:reduce)').matches){
-      track.scrollLeft = to; return;
-    }
-    const step = now => {
-      const k = Math.min(1, (now - t0) / ms);
-      track.scrollLeft = from + delta * (1 - Math.pow(1 - k, 3));
-      if (k < 1) anim = requestAnimationFrame(step);
-    };
-    anim = requestAnimationFrame(step);
-  }
-  const buttons = panels.map((panel, i) => {
-    const b = document.createElement('button');
-    b.type = 'button';
-    b.textContent = (panel.querySelector('.wrap') || {}).dataset?.w || `window ${i+1}`;
-    b.addEventListener('click', () => {
-      // Horizontal when the track is active, plain anchor scrolling otherwise.
-      if (track && track.scrollWidth > track.clientWidth + 4) glide(i * track.clientWidth);
-      else panel.scrollIntoView({ behavior: 'smooth' });
-    });
-    host.appendChild(b);
-    return b;
-  });
-
-  const mark = () => {
-    let active = 0;
-    if (track && track.scrollWidth > track.clientWidth + 4) {
-      active = Math.round(track.scrollLeft / Math.max(1, track.clientWidth));
-    } else {
-      const mid = innerHeight / 2;
-      panels.forEach((p, i) => { if (p.getBoundingClientRect().top <= mid) active = i; });
-    }
-    active = Math.max(0, Math.min(buttons.length - 1, active));
-    buttons.forEach((b, i) => b.setAttribute('aria-current', i === active ? 'true' : 'false'));
-  };
-  (track || window).addEventListener('scroll', mark, { passive: true });
-  addEventListener('resize', mark);
-  mark();
-
-  const tick = () => {
-    const d = new Date();
-    clock.textContent = `${d.getHours()}`.padStart(2,'0') + ':' + `${d.getMinutes()}`.padStart(2,'0');
-  };
-  tick(); setInterval(tick, 20000);
-
-  document.getElementById('startBtn').addEventListener('click', () => {
-    const t = document.querySelector('#install');
-    if (!t) return;
-    if (track && track.scrollWidth > track.clientWidth + 4) glide(panels.indexOf(t) * track.clientWidth);
-    else t.scrollIntoView({ behavior:'smooth' });
-  });
-})();
 
 </script>
 
