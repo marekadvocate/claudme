@@ -197,9 +197,14 @@
     .track::-webkit-scrollbar-thumb{background:var(--line);border-radius:5px}
     .track > header,.track > section,.track > footer{
       flex:0 0 100vw;height:100vh;overflow-y:auto;scroll-snap-align:start;
-      display:flex;flex-direction:column;justify-content:center;padding:2rem 0
+      display:flex;flex-direction:column;justify-content:center;padding:1.25rem 0
     }
-    .track > header{justify-content:flex-start;padding-top:clamp(2rem,6vh,4rem)}
+    .track > header{justify-content:flex-start;padding-top:clamp(1.5rem,4vh,3rem);overflow:hidden}
+    /* The demo screen is the only elastic thing in the hero: let it take whatever
+       height is left over instead of forcing a 16/10 box the panel can't contain. */
+    .track > header > .wrap{flex:1 1 auto;min-height:0;display:flex;flex-direction:column}
+    .track > header .stage{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;margin-top:1rem}
+    .track > header .screen{aspect-ratio:auto;flex:1 1 auto;min-height:0;width:100%}
     .track > footer{justify-content:center}
     .hint{
       position:fixed;right:1.1rem;bottom:1rem;z-index:20;
@@ -246,7 +251,7 @@
         </div>
 
         <div class="win" style="left:6%;top:16%;width:40%;height:46%">
-          <div class="bar"><i class="dot" style="background:#ff5f57"></i><i class="dot" style="background:#febc2e"></i><i class="dot" style="background:#28c840"></i>&nbsp;advocate — claude</div>
+          <div class="bar"><i class="dot" style="background:#ff5f57"></i><i class="dot" style="background:#febc2e"></i><i class="dot" style="background:#28c840"></i>&nbsp;billing — claude</div>
           <pre><span class="d">&gt;</span> refactor the billing module
 <span class="o">✳</span> Thinking… <span class="d">(xhigh)</span>
 <span class="g">✓</span> read 14 files
@@ -255,14 +260,14 @@
         </div>
 
         <div class="win keep" style="left:50%;top:26%;width:42%;height:44%">
-          <div class="bar"><i class="dot" style="background:#ff5f57"></i><i class="dot" style="background:#febc2e"></i><i class="dot" style="background:#28c840"></i>&nbsp;igocity — claude</div>
+          <div class="bar"><i class="dot" style="background:#ff5f57"></i><i class="dot" style="background:#febc2e"></i><i class="dot" style="background:#28c840"></i>&nbsp;maps — claude</div>
           <pre><span class="d">&gt;</span> add the map layer
 <span class="g">✓</span> Done in 4m 12s
 <span class="d">&gt;</span> <span class="o">▊</span></pre>
         </div>
 
         <div class="win" style="left:20%;top:52%;width:36%;height:30%">
-          <div class="bar"><i class="dot" style="background:#ff5f57"></i><i class="dot" style="background:#febc2e"></i><i class="dot" style="background:#28c840"></i>&nbsp;api — claude</div>
+          <div class="bar"><i class="dot" style="background:#ff5f57"></i><i class="dot" style="background:#febc2e"></i><i class="dot" style="background:#28c840"></i>&nbsp;infra — claude</div>
           <pre><span class="y">?</span> Allow <span class="o">rm -rf ./tmp</span>?
 <span class="d">  waiting for you…</span></pre>
         </div>
@@ -572,7 +577,6 @@ open build/Claudme.app</pre>
     }
   }
 
-  const eyes = [[2,3],[8,3]];
   let voxelMode = false, partyOn = true;
 
   function draw(cv, capColor, phase, sleeping, px = PX){
