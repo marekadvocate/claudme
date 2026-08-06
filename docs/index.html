@@ -13,7 +13,8 @@
 <style>
   *,*::before,*::after{box-sizing:border-box}
   :root{
-    --bg:#0d0c0b; --panel:#171513; --line:#2b2724;
+    --bg:#0d0c0b; --panel:#171513; --panel2:#1d1a17;
+    --line:#3a342e; --line2:#2a2521;
     --ink:#f3ece4; --dim:#a2968a; --faint:#6d635b;
     --crab:#d97757; --gold:#e8b04b;
     --font:ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,sans-serif;
@@ -22,167 +23,172 @@
   html{-webkit-text-size-adjust:100%}
   body{
     margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);
-    line-height:1.65;-webkit-font-smoothing:antialiased;overflow-x:hidden;
+    line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden;
   }
-  .wrap{width:min(1080px,100% - 2.5rem);margin-inline:auto}
   a{color:var(--crab)}
-  h1,h2,h3{line-height:1.15;letter-spacing:-.02em;margin:0}
-  section{padding:clamp(3.5rem,8vw,6rem) 0;border-top:1px solid var(--line)}
+  h1,h2,h3{margin:0;line-height:1.15;letter-spacing:-.02em;font-weight:700}
+  h1{font-size:clamp(1.9rem,4.6vw,3rem);font-weight:800}
+  h2{font-size:clamp(1.3rem,2.6vw,1.75rem)}
+  h3{font-size:1rem}
+  p{margin:.7rem 0}
+  .wrap{width:min(1000px,100% - 2rem);margin-inline:auto}
+  section{padding:clamp(2rem,4vw,3rem) 0;border:0}
+  .lede{color:var(--dim);max-width:66ch;font-size:1.02rem}
+  .note{color:var(--faint);font-size:.8rem;margin-top:.7rem}
   .eyebrow{
-    font:600 .72rem/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;
-    color:var(--crab);margin-bottom:1rem
+    font:600 .7rem/1 var(--mono);letter-spacing:.18em;text-transform:uppercase;
+    color:var(--crab);margin-bottom:.7rem
   }
+
+  /* ---------- classic window chrome, modern execution ----------
+     Title bar carries the old six-line pattern, but everything else is flat,
+     square and generously spaced rather than beveled. */
+  .w{
+    background:var(--panel);border:1px solid var(--line);border-radius:6px;
+    overflow:hidden;margin-bottom:1.25rem;
+    box-shadow:0 1px 0 rgba(255,255,255,.04) inset, 0 18px 40px -28px #000;
+  }
+  .w > .bar{
+    display:flex;align-items:center;gap:.6rem;padding:.5rem .7rem;
+    border-bottom:1px solid var(--line);
+    background:
+      repeating-linear-gradient(0deg,
+        rgba(255,255,255,.11) 0 1px, transparent 1px 3px);
+    background-color:var(--panel2);
+  }
+  .w > .bar .dots{display:flex;gap:5px;flex:none}
+  .w > .bar .dots i{width:9px;height:9px;border-radius:50%;background:#4a423b;display:block}
+  .w > .bar .dots i:first-child{background:var(--crab)}
+  .w > .bar .t{
+    font:600 .74rem/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;
+    color:var(--dim);background:var(--panel2);padding:0 .55rem;flex:none
+  }
+  .w > .bar .fill{flex:1}
+  .w > .body{padding:clamp(1.1rem,2.4vw,1.9rem)}
 
   /* ---------- hero ---------- */
-  header{padding:clamp(3rem,7vw,5rem) 0 0;text-align:center;border:0}
-  .logo{width:clamp(88px,13vw,132px);height:auto;margin-bottom:.9rem;image-rendering:crisp-edges}
-  h1{font-size:clamp(2rem,5.2vw,3.4rem);font-weight:800;max-width:19ch;margin-inline:auto}
-  .sub{color:var(--dim);font-size:clamp(1rem,2.2vw,1.2rem);max-width:56ch;margin:1.1rem auto 0}
-  .cta{display:flex;gap:.7rem;justify-content:center;flex-wrap:wrap;margin-top:2rem}
+  header{padding:clamp(2rem,4vw,3.25rem) 0 0}
+  .hero{display:flex;gap:1.6rem;align-items:flex-start}
+  .logo{width:clamp(76px,9vw,104px);height:auto;image-rendering:pixelated;flex:none}
+  .cta{display:flex;gap:.6rem;flex-wrap:wrap;margin-top:1.3rem}
   .btn{
-    display:inline-flex;align-items:center;gap:.5rem;padding:.7rem 1.3rem;border-radius:9px;
-    font-weight:600;font-size:.95rem;text-decoration:none;border:1px solid transparent;
-    transition:transform .12s ease,background .12s ease
+    display:inline-flex;align-items:center;gap:.45rem;padding:.6rem 1.15rem;border-radius:5px;
+    font-weight:650;font-size:.92rem;text-decoration:none;border:1px solid var(--line);
+    background:var(--panel2);color:var(--ink);transition:border-color .12s,transform .1s
   }
-  .btn:hover{transform:translateY(-1px)}
-  .btn-p{background:var(--crab);color:#231208}
-  .btn-s{border-color:var(--line);color:var(--ink);background:var(--panel)}
-  .note{color:var(--faint);font-size:.82rem;margin-top:1rem}
+  .btn:hover{border-color:var(--crab);transform:translateY(-1px)}
+  .btn-p{background:var(--crab);border-color:var(--crab);color:#22120a}
+  .btn-p:hover{filter:brightness(1.08)}
 
-  /* ---------- simulated mac screen ---------- */
-  .stage{margin:3rem 0 0;position:relative}
+  /* ---------- simulated screen ---------- */
+  .stage{margin-top:1.2rem}
   .screen{
-    position:relative;aspect-ratio:16/10;border-radius:14px;overflow:hidden;
+    position:relative;aspect-ratio:16/10;overflow:hidden;border-radius:4px;
     background:linear-gradient(150deg,#2a2320,#141a22 55%,#1d1512);
-    border:1px solid #34302c;box-shadow:0 30px 70px -30px #000,0 0 0 6px #0a0908;
+    border:1px solid var(--line2)
   }
-  .menubar{
-    height:26px;background:rgba(12,11,10,.62);backdrop-filter:blur(12px);
-    display:flex;align-items:center;gap:1rem;padding:0 .8rem;
-    font:500 11px/1 var(--font);color:#cfc6bd;border-bottom:1px solid rgba(255,255,255,.06)
-  }
+  .menubar{height:24px;background:rgba(10,9,8,.7);display:flex;align-items:center;gap:1rem;
+    padding:0 .7rem;font:500 11px/1 var(--font);color:#cfc6bd;border-bottom:1px solid rgba(255,255,255,.06)}
   .menubar .right{margin-left:auto;display:flex;gap:.9rem;align-items:center}
-  .win{
-    position:absolute;border-radius:9px;overflow:hidden;border:1px solid #3a342f;
-    background:#100e0d;box-shadow:0 20px 40px -18px #000
-  }
-  .win .bar{
-    height:24px;background:#221e1b;display:flex;align-items:center;gap:6px;padding:0 9px;
-    font:500 10px/1 var(--font);color:#8a8078;border-bottom:1px solid #2e2925
-  }
-  .dot{width:9px;height:9px;border-radius:50%}
-  .win pre{
-    margin:0;padding:9px 11px;font:11px/1.55 var(--mono);color:#b9ad9f;
-    white-space:pre-wrap;overflow:hidden
-  }
+  .win{position:absolute;overflow:hidden;border-radius:4px;background:#100e0d;border:1px solid #3a342f}
+  .win .bar{height:21px;background:#241f1b;display:flex;align-items:center;gap:5px;padding:0 8px;
+    font:500 10px/1 var(--font);color:#8a8078;border-bottom:1px solid #2e2925}
+  .dot{width:8px;height:8px;border-radius:50%}
+  .win pre{margin:0;padding:8px 10px;font:11px/1.5 var(--mono);color:#b9ad9f;white-space:pre-wrap;overflow:hidden}
   .g{color:#7fc08a}.o{color:var(--crab)}.y{color:var(--gold)}.d{color:#6d635b}
-  .dock{
-    position:absolute;left:50%;bottom:9px;transform:translateX(-50%);
-    display:flex;gap:7px;padding:6px 9px;border-radius:12px;
-    background:rgba(30,27,24,.66);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.08)
-  }
-  .dock i{width:26px;height:26px;border-radius:6px;display:block}
+  .dock{position:absolute;left:50%;bottom:8px;transform:translateX(-50%);display:flex;gap:6px;
+    padding:5px 8px;border-radius:9px;background:rgba(30,27,24,.7);border:1px solid rgba(255,255,255,.07)}
+  .dock i{width:23px;height:23px;border-radius:5px;display:block}
 
   .crab{position:absolute;left:0;top:0;will-change:transform;pointer-events:none}
   .crab canvas{display:block;image-rendering:pixelated}
-  /* labels live in screen space, not inside the rotated crab, so they stay
-     upright and can be clamped to the screen edges */
-  .tag{
-    position:absolute;transform:translateX(-50%);white-space:nowrap;
-    font:600 9px/1 var(--font);color:#fff;background:rgba(0,0,0,.42);
-    padding:2px 6px;border-radius:6px;backdrop-filter:blur(3px);pointer-events:none
-  }
-  .bub{
-    position:absolute;transform:translateX(-50%) scale(.6);white-space:nowrap;
-    font:500 10px/1 var(--font);color:#1a1a18;background:rgba(255,255,255,.95);
-    padding:4px 8px;border-radius:8px;opacity:0;pointer-events:none;
-    transition:opacity .18s,transform .18s;transform-origin:center bottom
-  }
+  .tag{position:absolute;transform:translateX(-50%);white-space:nowrap;
+    font:600 9px/1 var(--font);color:#fff;background:rgba(0,0,0,.45);padding:2px 6px;
+    border-radius:4px;pointer-events:none}
+  .bub{position:absolute;transform:translateX(-50%) scale(.6);white-space:nowrap;
+    font:500 10px/1 var(--font);color:#1a1a18;background:#f6f1e8;padding:4px 8px;border-radius:5px;
+    opacity:0;pointer-events:none;transition:opacity .18s,transform .18s}
   .bub.on{opacity:1;transform:translateX(-50%) scale(1)}
 
-  .controls{display:flex;gap:.5rem;flex-wrap:wrap;justify-content:center;margin-top:1.4rem}
+  /* ---------- controls ---------- */
+  .controls{display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.9rem}
   .controls button{
-    font:600 .82rem var(--font);padding:.5rem 1rem;border-radius:8px;cursor:pointer;
-    background:var(--panel);color:var(--ink);border:1px solid var(--line);transition:.12s
+    font:600 .8rem var(--font);padding:.45rem .85rem;border-radius:5px;cursor:pointer;
+    background:var(--panel2);color:var(--ink);border:1px solid var(--line);transition:.12s
   }
   .controls button:hover{border-color:var(--crab);color:var(--crab)}
+  .controls button:active{transform:translateY(1px)}
+  .controls.modes{gap:1.1rem;margin-top:1.1rem;padding-bottom:.9rem;border-bottom:1px solid var(--line2)}
+  .tog{display:inline-flex;align-items:center;gap:.5rem;cursor:pointer;background:none!important;
+       border:0!important;padding:.2rem!important;font:600 .84rem var(--font);color:var(--dim)}
+  .tog:hover{color:var(--ink)}
+  .tog .box{width:15px;height:15px;border-radius:3px;background:var(--panel2);
+    border:1px solid var(--line);display:grid;place-items:center;font:700 10px/1 var(--font);color:transparent}
+  .tog.on{color:var(--ink)}
+  .tog.on .box{background:var(--crab);border-color:var(--crab);color:#22120a}
 
   /* ---------- content ---------- */
-  .grid{display:grid;gap:1rem;grid-template-columns:repeat(auto-fit,minmax(255px,1fr));margin-top:2rem}
-  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:1.3rem}
-  .card h3{font-size:1rem;margin-bottom:.4rem}
-  .card p{margin:0;color:var(--dim);font-size:.9rem}
-  .card .ico{font-size:1.5rem;display:block;margin-bottom:.6rem}
+  .grid{display:grid;gap:.8rem;grid-template-columns:repeat(auto-fit,minmax(225px,1fr));margin-top:1.3rem}
+  .card{background:var(--panel2);border:1px solid var(--line2);border-radius:6px;padding:1.1rem}
+  .card h3{margin-bottom:.35rem}
+  .card p{margin:0;color:var(--dim);font-size:.87rem}
+  .card .ico{font-size:1.35rem;display:block;margin-bottom:.5rem}
 
-  table{width:100%;border-collapse:collapse;margin-top:2rem;font-size:.92rem}
-  th,td{text-align:left;padding:.7rem .6rem;border-bottom:1px solid var(--line);vertical-align:top}
-  th{color:var(--faint);font:600 .72rem var(--mono);letter-spacing:.1em;text-transform:uppercase}
-  td:first-child{width:44%;color:var(--ink)}
+  table{width:100%;border-collapse:collapse;margin-top:1.2rem;font-size:.9rem}
+  th,td{text-align:left;padding:.6rem .55rem;border-bottom:1px solid var(--line2);vertical-align:top}
+  th{color:var(--faint);font:600 .68rem var(--mono);letter-spacing:.12em;text-transform:uppercase}
+  td:first-child{width:46%;color:var(--ink)}
   td:last-child{color:var(--dim)}
 
-  pre.code{
-    background:var(--panel);border:1px solid var(--line);border-radius:10px;
-    padding:1rem 1.2rem;overflow-x:auto;font:13px/1.7 var(--mono);color:#cbbfb2
-  }
+  pre.code{background:#100e0d;border:1px solid var(--line2);border-radius:6px;
+    padding:.95rem 1.15rem;overflow-x:auto;font:12.5px/1.7 var(--mono);color:#cbbfb2}
   pre.code .c{color:var(--faint)}
+  blockquote{margin:1.2rem 0;padding:.8rem 1rem;border-left:2px solid var(--crab);
+    background:var(--panel2);border-radius:0 5px 5px 0;font-style:italic}
 
-  .lede{color:var(--dim);max-width:62ch;font-size:1.02rem;margin-top:.9rem}
-  blockquote{
-    margin:1.6rem 0;padding-left:1.1rem;border-left:2px solid var(--crab);
-    color:var(--ink);font-size:1.05rem;font-style:italic
-  }
+  /* ---------- fund + updates ---------- */
+  .fund{background:var(--panel2);border:1px solid var(--line2);border-radius:6px;padding:1.3rem;margin-top:1.3rem}
+  .meter{height:22px;border-radius:4px;background:#100e0d;border:1px solid var(--line2);
+    overflow:hidden;position:relative;margin:.85rem 0 .45rem}
+  .meter i{display:block;height:100%;width:.6%;background:linear-gradient(90deg,var(--crab),var(--gold))}
+  .meter span{position:absolute;inset:0;display:grid;place-items:center;font:600 .72rem var(--mono)}
+  .fundrow{display:flex;justify-content:space-between;font-size:.78rem;color:var(--faint)}
+  .iban{font:600 .9rem var(--mono);background:#100e0d;border:1px dashed var(--line);
+    border-radius:5px;padding:.65rem .85rem;margin-top:.9rem;color:var(--dim);word-break:break-all}
 
-  /* ---------- porsche ---------- */
-  .fund{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:1.6rem;margin-top:2rem}
-  .meter{height:26px;border-radius:13px;background:#0e0d0c;border:1px solid var(--line);overflow:hidden;position:relative;margin:1rem 0 .5rem}
-  .meter i{display:block;height:100%;width:0.4%;background:linear-gradient(90deg,var(--crab),var(--gold));border-radius:13px}
-  .meter span{position:absolute;inset:0;display:grid;place-items:center;font:600 .74rem var(--mono);color:var(--ink)}
-  .fundrow{display:flex;justify-content:space-between;font-size:.8rem;color:var(--faint)}
-  .iban{font:600 .95rem var(--mono);background:#0e0d0c;border:1px dashed var(--line);border-radius:8px;padding:.7rem .9rem;margin-top:1rem;color:var(--dim);word-break:break-all}
-
-  /* ---------- latest updates ---------- */
-  .commits{list-style:none;padding:0;margin:2rem 0 0;display:grid;gap:.5rem}
-  .commits li{
-    background:var(--panel);border:1px solid var(--line);border-radius:10px;
-    padding:.85rem 1.1rem;display:flex;gap:1rem;align-items:baseline
-  }
-  .commits .msg{flex:1;min-width:0;font-size:.94rem}
-  .commits .when{color:var(--faint);font:500 .78rem var(--mono);white-space:nowrap}
+  .commits{list-style:none;padding:0;margin:1.2rem 0 0;display:grid;gap:.35rem}
+  .commits li{background:var(--panel2);border:1px solid var(--line2);border-radius:5px;
+    padding:.6rem .9rem;display:flex;gap:1rem;align-items:baseline;font-size:.9rem}
+  .commits .msg{flex:1;min-width:0}
+  .commits .when{color:var(--faint);font:500 .74rem var(--mono);white-space:nowrap}
   .commit-skeleton{color:var(--faint)}
 
-  footer{padding:3rem 0;border-top:1px solid var(--line);color:var(--faint);font-size:.85rem;text-align:center}
+  footer{padding:2rem 0 3rem;color:var(--faint);font-size:.82rem;text-align:center}
 
-  /* ---------- small screens ---------- */
   @media (max-width:820px){
-    /* one window is enough to read the scene; three would be unreadable */
     .win{display:none}
-    .win.keep{display:block;left:6%;top:20%;width:88%;height:44%}
+    .win.keep{display:block;left:5%;top:20%;width:90%;height:46%}
     .screen{aspect-ratio:4/3}
-    .dock{gap:5px;padding:5px 7px}
-    .dock i{width:20px;height:20px}
+    .dock i{width:18px;height:18px}
   }
   @media (max-width:640px){
-    section{padding:2.75rem 0}
-    .stage{margin-top:2rem}
+    .hero{flex-direction:column;gap:.9rem}
     .screen{aspect-ratio:1/1}
-    .controls button{flex:1 1 45%;padding:.55rem .6rem;font-size:.78rem}
+    .controls button{flex:1 1 44%;justify-content:center;font-size:.74rem;padding:.42rem .3rem}
+    .controls.modes{gap:.9rem}
     .cta .btn{flex:1 1 100%;justify-content:center}
-    table{font-size:.86rem}
-    td:first-child{width:50%}
-    .commits li{flex-direction:column;gap:.2rem}
-    .commits .when{font-size:.72rem}
-    blockquote{font-size:.98rem}
+    .commits li{flex-direction:column;gap:.15rem}
+    td:first-child{width:52%}
   }
-  @media (prefers-reduced-motion:reduce){
-    .crab{transition:none!important}
-  }
+  @media (prefers-reduced-motion:reduce){ .crab{transition:none!important} }
 </style>
 </head>
 <body>
 
 <header>
-  <div class="wrap">
-    <img class="logo" src="logo.svg" alt="Claudme" width="132" height="132">
+  <div class="wrap" style="text-align:left">
+    <div class="hero"><img class="logo" src="logo.svg" alt="Claudme">
+    <div>
     <h1>Your AI agents are a crime family</h1>
     <p class="sub">
       Claudme gives every running Claude Code session a pixel crab that crawls the edge of
@@ -195,14 +201,16 @@
     </div>
     <p class="note">macOS 13+ · native Swift · no Electron · no permissions · MIT</p>
     <p class="note" style="margin-top:.35rem">
-      An independent community project — <a href="#disclaimer" style="color:var(--faint);text-decoration:underline">not affiliated with Anthropic</a>
+      An independent community project — <a href="#disclaimer">not affiliated with Anthropic</a>
     </p>
+    </div></div>
 
     <div class="stage">
       <div class="screen" id="screen">
         <div class="menubar">
           <b>Claudme</b><span>File</span><span>Edit</span><span>View</span>
-          <div class="right"><span id="mbcount">🦀 5</span><span>Wed 02:14</span></div>
+          <div class="right"><span id="mbcount" style="display:inline-flex;align-items:center;gap:4px">
+            <img src="logo.svg" alt="" style="height:13px;width:auto;image-rendering:crisp-edges">5</span><span>Wed 02:14</span></div>
         </div>
 
         <div class="win" style="left:6%;top:16%;width:40%;height:46%">
@@ -236,21 +244,30 @@
         </div>
       </div>
 
-      <div class="controls">
-        <button data-act="done">Finish a task 🎉</button>
-        <button data-act="need">Needs you ✋</button>
-        <button data-act="beer">Beer break 🍺</button>
-        <button data-act="subs">Spawn subagents 👶</button>
-        <button data-act="wave">Stadium wave 🌊</button>
+      <div class="controls modes">
+        <button data-toggle="mode" class="tog"><span class="box">✓</span>3D crabs</button>
+        <button data-toggle="party" class="tog on"><span class="box">✓</span>Party mode 🎵</button>
       </div>
-      <p class="note">That's a simulation of your desktop — the real thing runs on your actual screen edges.</p>
+      <div class="controls">
+        <button data-act="done">Finished 🎉</button>
+        <button data-act="need">Needs you ✋</button>
+        <button data-act="trouble">Rate limit ⚠️</button>
+        <button data-act="beer">Beer 🍺</button>
+        <button data-act="clink">Clink 🍻</button>
+        <button data-act="subs">Subagents 👶</button>
+        <button data-act="spin">Spin 🌀</button>
+        <button data-act="rope">Rope 🪢</button>
+        <button data-act="rocket">Rocket 🚀</button>
+        <button data-act="compact">Compact 🗜️</button>
+        <button data-act="wave">Wave 🌊</button>
+      </div>
+      <p class="note">Everything the real app does, on demand — it runs on your actual screen edges.</p>
     </div>
   </div>
 </header>
 
 <section>
-  <div class="wrap">
-    <p class="eyebrow">The problem</p>
+  <div class="wrap"><div class="w"><div class="bar"><span class="dots"><i></i><i></i><i></i></span><span class="t">the problem</span><span class="fill"></span></div><div class="body">
     <h2>Have you lost the dopamine from clauding?</h2>
     <p class="lede" style="font-size:1.12rem;color:var(--ink)">
       You used to <em>build</em> things. Now you type a sentence, watch a spinner and read a
@@ -278,12 +295,11 @@
       and who's done. And it gives the whole thing a pulse again: your agents stop being
       spinners and start being a crew you recognise by name.
     </p>
-  </div>
+  </div></div></div>
 </section>
 
 <section>
-  <div class="wrap">
-    <p class="eyebrow">Reading the crabs</p>
+  <div class="wrap"><div class="w"><div class="bar"><span class="dots"><i></i><i></i><i></i></span><span class="t">reading the crabs</span><span class="fill"></span></div><div class="body">
     <h2>Every state means something</h2>
     <table>
       <tr><th>What you see</th><th>What it means</th></tr>
@@ -297,12 +313,11 @@
       <tr><td>🕶️ black shades</td><td>Running with <code>--dangerously-skip-permissions</code></td></tr>
       <tr><td>🛰️ orbiting satellite</td><td>Remote or bridged session</td></tr>
     </table>
-  </div>
+  </div></div></div>
 </section>
 
 <section>
-  <div class="wrap">
-    <p class="eyebrow">The family</p>
+  <div class="wrap"><div class="w"><div class="bar"><span class="dots"><i></i><i></i><i></i></span><span class="t">the family</span><span class="fill"></span></div><div class="body">
     <h2>Ranks are earned, not assigned</h2>
     <p class="lede">
       Every session is a made man with a stable name — the same session always gets the
@@ -321,12 +336,11 @@
       <div class="card"><span class="ico">🖱️</span><h3>Click to jump</h3><p>Click a crab and the terminal running that session comes to the front. Right-click for its working directory and status.</p></div>
       <div class="card"><span class="ico">🌍</span><h3>Speaks your language</h3><p>Eighteen languages out of the box — each written in its own crime-fiction register, not translated. Adding one is a single pull request.</p></div>
     </div>
-  </div>
+  </div></div></div>
 </section>
 
 <section id="install">
-  <div class="wrap">
-    <p class="eyebrow">Install</p>
+  <div class="wrap"><div class="w"><div class="bar"><span class="dots"><i></i><i></i><i></i></span><span class="t">install</span><span class="fill"></span></div><div class="body">
     <h2>Two commands</h2>
     <p class="lede">Requires macOS 13+ and Xcode command line tools. No dependencies, no package manager.</p>
     <pre class="code">git clone https://github.com/marekadvocate/claudme.git
@@ -343,12 +357,11 @@ open build/Claudme.app</pre>
       <div class="card"><span class="ico">🪶</span><h3>~3 MB, native</h3><p>Plain Swift and AppKit. Every crab is drawn in code — there isn't a single image asset in the repo.</p></div>
       <div class="card"><span class="ico">🖥️</span><h3>Every display</h3><p>One overlay per monitor. Crabs are dealt across your screens and stay on their own.</p></div>
     </div>
-  </div>
+  </div></div></div>
 </section>
 
 <section>
-  <div class="wrap">
-    <p class="eyebrow">Open source</p>
+  <div class="wrap"><div class="w"><div class="bar"><span class="dots"><i></i><i></i><i></i></span><span class="t">open source</span><span class="fill"></span></div><div class="body">
     <h2>Come build a crab</h2>
     <p class="lede">
       MIT licensed and dependency-free — <code>./build.sh</code> is the entire build system,
@@ -369,12 +382,11 @@ open build/Claudme.app</pre>
       <a class="btn btn-p" href="https://github.com/marekadvocate/claudme">★ Star on GitHub</a>
       <a class="btn btn-s" href="https://github.com/marekadvocate/claudme/issues">Open an issue</a>
     </div>
-  </div>
+  </div></div></div>
 </section>
 
 <section id="support">
-  <div class="wrap">
-    <p class="eyebrow">Support</p>
+  <div class="wrap"><div class="w"><div class="bar"><span class="dots"><i></i><i></i><i></i></span><span class="t">support</span><span class="fill"></span></div><div class="body">
     <h2>Buy me a Porsche</h2>
     <p class="lede">
       Claudme is free and always will be. But a man can dream, and the dream is German.
@@ -395,12 +407,11 @@ open build/Claudme.app</pre>
         One-off tips only, no memberships. Ko-fi takes no platform cut on those.
       </p>
     </div>
-  </div>
+  </div></div></div>
 </section>
 
 <section id="updates">
-  <div class="wrap">
-    <p class="eyebrow">Latest updates</p>
+  <div class="wrap"><div class="w"><div class="bar"><span class="dots"><i></i><i></i><i></i></span><span class="t">latest updates</span><span class="fill"></span></div><div class="body">
     <h2>Shipped recently</h2>
     <p class="lede">
       Pulled live from the repo, so this is never out of date.
@@ -411,11 +422,11 @@ open build/Claudme.app</pre>
     <p class="note">
       <a href="https://github.com/marekadvocate/claudme/commits/master">Full history on GitHub →</a>
     </p>
-  </div>
+  </div></div></div>
 </section>
 
 <section id="disclaimer">
-  <div class="wrap">
+  <div class="wrap"><div class="w"><div class="bar"><span class="dots"><i></i><i></i><i></i></span><span class="t">claudme</span><span class="fill"></span></div><div class="body">
     <div style="background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--crab);
                 border-radius:12px;padding:1.5rem 1.7rem;max-width:70ch">
       <p style="margin:0 0 .8rem;font:600 .78rem/1 var(--mono);letter-spacing:.14em;
@@ -436,7 +447,7 @@ open build/Claudme.app</pre>
         their API. Support requests belong here, never to Anthropic.
       </p>
     </div>
-  </div>
+  </div></div></div>
 </section>
 
 <footer>
@@ -476,7 +487,62 @@ open build/Claudme.app</pre>
   const W = GRID_W*PX, H = ROWS*PX;
 
   /// px lets subagent babies be drawn genuinely smaller rather than CSS-scaled
+  /// Isometric voxel draw — mirrors VoxelSprite.swift: extrude the flat grid, three flat
+  /// shades per cube, painter-ordered. Same 2:1 projection as the app icon.
+  function drawVoxel(cv, capColor, phase, sleeping, px = PX){
+    const DEPTH = 3, hw = px, hh = px/2, hz = px;
+    const groups = [
+      [shell, CRAB], [phase ? legsB : legsA, CRAB],
+      [hat, capColor], [sleeping ? [] : eyes, INK],
+    ];
+    const filled = new Set();
+    for (const [cells] of groups) for (const [c,r] of cells)
+      for (let y=0;y<DEPTH;y++) filled.add(`${c},${y},${-r}`);
+
+    const faces = [];
+    let minX=1e9, minY=1e9, maxX=-1e9, maxY=-1e9;
+    const shade = (hex, f) => {
+      const n = parseInt(hex.slice(1),16);
+      const m = v => Math.min(255, Math.round(v*f));
+      return `rgb(${m(n>>16&255)},${m(n>>8&255)},${m(n&255)})`;
+    };
+    for (const [cells, col] of groups){
+      const top = shade(col,1.18), left = shade(col,0.80), right = shade(col,0.60);
+      for (const [c,r] of cells) for (let y=0;y<DEPTH;y++){
+        const x=c, z=-r, sx=(x-y)*hw, sy=(x+y)*hh - z*hz;
+        const push=(pts,cc)=>{ faces.push([pts,cc]);
+          for (const [px2,py2] of pts){ minX=Math.min(minX,px2); maxX=Math.max(maxX,px2);
+                                        minY=Math.min(minY,py2); maxY=Math.max(maxY,py2); } };
+        if(!filled.has(`${x},${y},${z+1}`))
+          push([[sx,sy-hh],[sx+hw,sy],[sx,sy+hh],[sx-hw,sy]], top);
+        if(!filled.has(`${x},${y+1},${z}`))
+          push([[sx-hw,sy],[sx,sy+hh],[sx,sy+hh+hz],[sx-hw,sy+hz]], left);
+        if(!filled.has(`${x+1},${y},${z}`))
+          push([[sx+hw,sy],[sx,sy+hh],[sx,sy+hh+hz],[sx+hw,sy+hz]], right);
+      }
+    }
+    faces.sort((a,b)=> Math.max(...a[0].map(p=>p[1])) - Math.max(...b[0].map(p=>p[1])));
+
+    const w = Math.ceil(maxX-minX)+2, h = Math.ceil(maxY-minY)+2;
+    const dpr = Math.min(devicePixelRatio||1,3);
+    cv.width = w*dpr; cv.height = h*dpr;
+    cv.style.width = w+'px'; cv.style.height = h+'px';
+    const g = cv.getContext('2d');
+    g.setTransform(dpr,0,0,dpr,0,0);
+    g.clearRect(0,0,w,h);
+    g.translate(-minX+1, -minY+1);
+    for (const [pts,cc] of faces){
+      g.beginPath(); g.moveTo(pts[0][0],pts[0][1]);
+      for (const p of pts.slice(1)) g.lineTo(p[0],p[1]);
+      g.closePath(); g.fillStyle = cc; g.fill();
+    }
+  }
+
+  const eyes = [[2,3],[8,3]];
+  let voxelMode = false, partyOn = true;
+
   function draw(cv, capColor, phase, sleeping, px = PX){
+    if (voxelMode) return drawVoxel(cv, capColor, phase, sleeping, px);
     const w = GRID_W*px, h = ROWS*px;
     const g = cv.getContext('2d');
     const dpr = Math.min(devicePixelRatio||1, 3);
@@ -570,12 +636,19 @@ open build/Claudme.app</pre>
 
     for (const c of crabs){
       const moving = c.state === 'idle' || c.state === 'busy';
-      if (moving && !reduced){
+      if (moving && !reduced && !c.trav){
         const sp = (c.state==='busy' ? c.speed*2.4 : c.speed);
         c.t += (c.dir * sp * dt) / P;
         c.phase = (Math.floor(((c.t%1)+1)%1 * P / 7) & 1);
       }
       if (c.hop > 0) c.hop = Math.max(0, c.hop - dt*2.2);
+      if (c.spin > 0){ c.spin = Math.max(0, c.spin - dt*0.9); }
+      if (c.trav){
+        c.travT = Math.min(1, c.travT + dt*0.45);
+        const e = c.travT < .5 ? 2*c.travT*c.travT : 1 - Math.pow(-2*c.travT+2,2)/2;
+        c.t = c.travFrom + (c.travTo - c.travFrom) * e;
+        if (c.travT >= 1) c.trav = null;
+      }
       if (c.until && now > c.until){ c.until = 0; c.state = 'idle'; redraw(c); }
       place(c, rect);
     }
@@ -642,7 +715,23 @@ open build/Claudme.app</pre>
   };
   const pick = a => a[Math.floor(Math.random()*a.length)];
 
-  document.querySelectorAll('.controls button').forEach(btn => {
+  // mode toggles: re-render every crab in the chosen style, or start/stop the party
+  document.querySelectorAll('[data-toggle]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const which = btn.dataset.toggle;
+      btn.classList.toggle('on');
+      const on = btn.classList.contains('on');
+      if (which === 'mode') {
+        voxelMode = on;
+        for (const c of crabs) redraw(c);
+      } else {
+        partyOn = on;
+        for (const c of crabs) { c.dance = on && Math.random() < .7; }
+      }
+    });
+  });
+
+  document.querySelectorAll('.controls button[data-act]').forEach(btn => {
     btn.addEventListener('click', () => {
       const act = btn.dataset.act;
       const c = crabs[Math.floor(Math.random()*crabs.length)];
@@ -651,6 +740,22 @@ open build/Claudme.app</pre>
       if (act === 'need'){ c.state='need'; c.until=now+4200; c.hop=1; say(c, pick(LINES.need), 4200); }
       if (act === 'beer'){ c.state='beer'; c.until=now+3200; say(c, pick(LINES.beer), 3200); }
       if (act === 'subs'){ babies(c, true); say(c,'The kids are working.',3000); }
+      if (act === 'trouble'){ c.state='need'; c.until=now+3400; c.hop=1; say(c,'We got a problem.',3400); }
+      if (act === 'clink'){
+        const other = crabs.filter(x=>x!==c)[0];
+        c.state='beer'; c.until=now+3200; say(c,'🍻 To the family.',3200);
+        if (other){ other.state='beer'; other.until=now+3200; say(other,'🍻',3200); }
+      }
+      if (act === 'spin'){
+        c.until = now+1300; c.spin = 1;
+      }
+      if (act === 'compact'){ say(c,'🗜️',2000); setTimeout(()=>say(c,'grg 😮‍💨',2000), 2100); }
+      if (act === 'rope' || act === 'rocket'){
+        c.trav = act; c.travT = 0;
+        c.travFrom = c.t;
+        c.travTo = act === 'rope' ? 0.0 : (c.t + 0.5) % 1;   // floor, or straight across
+        say(c, act === 'rope' ? '🪢' : '🚀', 2200);
+      }
       if (act === 'wave'){
         [...crabs].sort((a,b)=>a.t-b.t).forEach((cc,i)=>
           setTimeout(()=>{ cc.hop = 1; }, i*130));
@@ -668,6 +773,7 @@ open build/Claudme.app</pre>
   }, 9000);
 
   // one crab is always busy, one always asleep — shows the range of states
+  for (const c of crabs){ c.dance = partyOn && Math.random() < .7; c.spin = 0; c.trav = null; }
   crabs[0].state = 'busy';
   crabs[4].state = 'sleep'; redraw(crabs[4]); say(crabs[4],'z Z', 999999);
 
