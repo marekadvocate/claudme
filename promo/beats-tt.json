@@ -1,0 +1,10 @@
+[
+ {"t":0.2,"card":"5 things my crabs do","sub":"that I never told them to"},
+ {"t":2.4,"card":"","lower":"1. hop when they need permission","act":"need"},
+ {"t":6.0,"lower":"2. throw confetti when they finish","act":"done"},
+ {"t":9.6,"lower":"3. take a beer break","act":"beer"},
+ {"t":11.4,"act":"clink"},
+ {"t":13.2,"lower":"4. rocket across the screen","act":"rocket"},
+ {"t":16.8,"lower":"5. do a stadium wave","act":"wave"},
+ {"t":20.4,"lower":"","card":"Claudme","sub":"free · open source · mac\nlink in bio"}
+]

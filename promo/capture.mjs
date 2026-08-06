@@ -19,7 +19,7 @@ const chrome = spawn(CHROME, [
   '--headless=new', `--remote-debugging-port=${PORT}`, '--disable-gpu',
   '--hide-scrollbars', '--mute-audio', `--window-size=${W},${H}`,
   '--force-device-scale-factor=1', '--no-first-run', '--no-default-browser-check',
-  '--user-data-dir=/tmp/claudme-capture-profile', 'about:blank',
+  '--user-data-dir=/tmp/claudme-cap-'+PORT+'', 'about:blank',
 ], { stdio: 'ignore' });
 
 const targetUrl = await (async () => {
@@ -52,20 +52,40 @@ const { sessionId } = await send('Target.attachToTarget', { targetId, flatten: t
 await send('Page.enable', {}, sessionId);
 await send('Emulation.setDeviceMetricsOverride',
   { width: W, height: H, deviceScaleFactor: 1, mobile: false }, sessionId);
+// Virtual time is the whole trick. Capturing a 1920x1080 frame takes far longer than
+// the 33ms it represents, so with the real clock the page races ahead of the frame
+// index and the film desynchronises from its own script. Under a paused virtual clock
+// Chrome only advances time when we say so, by exactly one frame at a time — every
+// setTimeout, transition and rAF steps in lockstep with what we record.
+const stepMs = 1000 / FPS;
+const budgetExpired = () => new Promise(res => {
+  const h = e => {
+    const m = JSON.parse(e.data);
+    if (m.method === 'Emulation.virtualTimeBudgetExpired') { ws.removeEventListener('message', h); res(); }
+  };
+  ws.addEventListener('message', h);
+});
+
+await send('Emulation.setVirtualTimePolicy', { policy: 'pause' }, sessionId);
 await send('Page.navigate', { url }, sessionId);
-await sleep(2600);                      // let fonts, the voxel logo and the crabs settle
+
+// let fonts, the voxel logo and the first crab layout settle before frame zero
+let wait = budgetExpired();
+await send('Emulation.setVirtualTimePolicy',
+  { policy: 'pauseIfNetworkFetchesPending', budget: 1200 }, sessionId);
+await wait;
 
 const total = Math.round(SECONDS * FPS);
-const step = 1000 / FPS;
-const t0 = Date.now();
 for (let i = 0; i < total; i++) {
   const shot = await send('Page.captureScreenshot',
     { format: 'png', captureBeyondViewport: false }, sessionId);
   await writeFile(`${outDir}/f${String(i).padStart(5, '0')}.png`,
                   Buffer.from(shot.data, 'base64'));
-  const drift = (t0 + (i + 1) * step) - Date.now();
-  if (drift > 0) await sleep(drift);
-  if (i % 30 === 0) process.stdout.write(`\r  ${i}/${total} frames`);
+  wait = budgetExpired();
+  await send('Emulation.setVirtualTimePolicy',
+    { policy: 'pauseIfNetworkFetchesPending', budget: stepMs }, sessionId);
+  await wait;
+  if (i % 60 === 0) process.stdout.write(`\r  ${i}/${total} frames`);
 }
 process.stdout.write(`\r  ${total}/${total} frames\n`);
 ws.close();

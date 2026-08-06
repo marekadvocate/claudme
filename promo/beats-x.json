@@ -1,0 +1,18 @@
+[
+ {"t":0.3,"card":"Six terminals.","sub":"Six spinners. Nothing to look at."},
+ {"t":3.2,"card":""},
+ {"t":3.8,"lower":"Every Claude Code session becomes a crab on the edge of your screen"},
+ {"t":7.4,"lower":"","act":"need"},
+ {"t":8.4,"lower":"It hops when it needs your permission"},
+ {"t":12.0,"lower":"","act":"done"},
+ {"t":13.0,"lower":"Confetti when a turn finishes"},
+ {"t":16.6,"lower":"","act":"beer"},
+ {"t":18.2,"act":"clink"},
+ {"t":19.0,"lower":"They take beer breaks and clink glasses"},
+ {"t":22.6,"lower":"","act":"rocket"},
+ {"t":24.2,"lower":"One rockets across. Another rappels from the ceiling."},
+ {"t":27.0,"act":"rope"},
+ {"t":28.6,"lower":"","act":"wave"},
+ {"t":29.6,"lower":"A stadium wave when the last session finishes"},
+ {"t":33.0,"lower":"","card":"Claudme","sub":"free · MIT · native Swift · ~3 MB\nmarekadvocate.github.io/claudme"}
+]
