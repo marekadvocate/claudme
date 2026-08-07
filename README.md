@@ -136,9 +136,11 @@ thing, but the chair is washed out, the crab sways queasily and the line is *"Ne
 It picks its moment every 7–15 minutes and only when the session is idle, so it never interrupts
 work. Every mood is written in all nineteen languages.
 
-**Traversals** — a crab on the ceiling can rappel to the floor on a rope 🪢; one on a side wall
-can rocket across to the other 🚀. Both leave the perimeter for a few seconds, then rejoin it
-wherever they land.
+**Traversals** — standing on the ceiling or a side wall *is* the cue: a crab up there rappels
+to the floor on a rope 🪢, one on a side wall rockets across to the other 🚀. Both leave the
+perimeter for a few seconds, then rejoin it wherever they land. The only pacing is an 18–40 s
+settle, which exists purely because a rocket lands on the opposite wall — itself an eligible
+spot — and without it the crab would bounce between the two forever.
 
 **Dancing** — whenever anything plays audio on your Mac, the family dances. In 2D the shell
 comes apart into its individual pixel cubes and a wave travels diagonally through them; in 3D

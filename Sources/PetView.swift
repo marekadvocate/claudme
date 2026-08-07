@@ -129,8 +129,8 @@ final class PetView: NSView {
     // rare tricks + idle mumbles + hover pokes
     private var trickUntil: CFTimeInterval = 0
     private var nextTrickAt: CFTimeInterval = CACurrentMediaTime() + Double.random(in: 300...900)
-    /// separate clock for rope/rocket — see the traversal branch in tick()
-    private var nextTraversalAt: CFTimeInterval = CACurrentMediaTime() + Double.random(in: 45...120)
+    /// only stops a rocket from bouncing wall to wall without pause
+    private var traversalSettleUntil: CFTimeInterval = 0
     private var nextMumbleAt: CFTimeInterval = CACurrentMediaTime() + Double.random(in: 180...480)
     /// Friday and Saturday earn a deckchair; Monday earns a scowl. Checked live rather than
     /// cached, so a crab left running over midnight changes its tune with the calendar.
@@ -896,9 +896,13 @@ final class PetView: NSView {
                 dayMoodBreak(now: now)
                 break
             }
-            if state == .idle, now >= nextTraversalAt, traversal == nil,
+            // Standing on a wall or the ceiling IS the condition — no arming flag, no
+            // countdown to wait out. The only clock left is a short settle, because a
+            // rocket lands on the opposite wall, which is itself an eligible spot, and
+            // without it the crab would bounce between the two forever.
+            if traversal == nil, now >= traversalSettleUntil,
                currentSegment == 1 || currentSegment == 2 || currentSegment == 3 {
-                nextTraversalAt = now + Double.random(in: 100...220)
+                traversalSettleUntil = now + Double.random(in: 18...40)
                 if currentSegment == 2 { startRope() } else { startRocket() }
                 break
             }
