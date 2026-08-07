@@ -86,11 +86,17 @@ folder. Nothing else is left behind.
 **Click a crab** — the terminal running that session comes to the front.
 **Right-click** — its working directory, era and status.
 
-**The Dock is yours.** The overlay sits a level above the Dock so the crabs walk in front of
-it, which would otherwise mean a crab parked on an icon swallows the click meant for it. So
-inside the Dock's band Claudme never takes the mouse at all, and any crab loitering there
-scurries sideways out of the way as your cursor comes down. Everywhere else they stay
-clickable.
+**The Dock.** The overlay sits a level above the Dock so the crabs walk in front of it, which
+means a crab parked on an icon could swallow the click meant for it. Two things stop that,
+and only one of them is a setting.
+
+Always on: a crab loitering in the Dock's band **scurries sideways** as your cursor comes
+down, so it is out of the way by the time you arrive.
+
+**Clickable over the Dock** (menubar, on by default): leave it on and the crabs stay
+clickable everywhere, relying on them moving aside. Turn it off and Claudme never takes the
+mouse inside the Dock's band at all — an icon click can then never be swallowed, at the cost
+of not being able to click a crab that is standing there.
 
 ## The family
 
@@ -162,6 +168,7 @@ throughout: the music changes how they move, never what they're doing. Switch it
 | **The family** | one row per session: rank, colour, status. Click a row to show its terminal |
 | **Language** | nineteen of them, plus the Clean / Street talk switch |
 | **Crab size** | 50% to 300%, on top of the per-state and per-model scales |
+| **Clickable over the Dock** | whether a crab on the Dock takes the click, or the icon does |
 | **Playground** | fire any of the fifteen effects on demand instead of waiting out its timer |
 | **Party mode** | whether music makes them dance. On by default |
 | **3D crabs** | render the family as isometric voxels, like the app icon |

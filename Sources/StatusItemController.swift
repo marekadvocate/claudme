@@ -118,6 +118,15 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         party.isEnabled = true
         menu.addItem(party)
 
+        let dock = NSMenuItem(title: "Clickable over the Dock",
+                              action: #selector(toggleDockClicks), keyEquivalent: "")
+        dock.target = self
+        dock.state = PetManager.clickableOnDock ? .on : .off
+        dock.toolTip = "On: a crab on the Dock can still be clicked — they move aside anyway. "
+            + "Off: clicks in the Dock always reach the icon underneath."
+        dock.isEnabled = true
+        menu.addItem(dock)
+
         let voxel = NSMenuItem(title: "3D crabs", action: #selector(toggleVoxel), keyEquivalent: "")
         voxel.target = self
         voxel.state = PetView.voxelMode ? .on : .off
@@ -197,6 +206,10 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     @objc private func pickLanguage(_ sender: NSMenuItem) {
         guard let raw = sender.representedObject as? String, let l = Lang(rawValue: raw) else { return }
         Quips.setLanguage(l)
+    }
+
+    @objc private func toggleDockClicks() {
+        PetManager.setClickableOnDock(!PetManager.clickableOnDock)
     }
 
     @objc private func pickScale(_ sender: NSMenuItem) {

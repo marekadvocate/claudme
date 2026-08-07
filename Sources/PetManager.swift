@@ -316,6 +316,21 @@ final class PetManager {
     /// then that one accepts the click (PetView.mouseDown shows the session's terminal).
     private var lastHoveredId: String?
 
+    /// Whether a crab standing on the Dock can still be clicked.
+    ///
+    /// On (the default): they stay clickable everywhere, and the Dock is kept usable by
+    /// the fact that they move aside as your cursor comes down. Off: inside the Dock's
+    /// band the overlay never takes the mouse at all, so an icon click can never be
+    /// swallowed — at the cost of not being able to click a crab that is standing there.
+    static var clickableOnDock: Bool = {
+        UserDefaults.standard.object(forKey: "ClaudmeClickableOnDock") as? Bool ?? true
+    }()
+
+    static func setClickableOnDock(_ v: Bool) {
+        clickableOnDock = v
+        UserDefaults.standard.set(v, forKey: "ClaudmeClickableOnDock")
+    }
+
     private func updateMouseInteractivity() {
         let mouse = NSEvent.mouseLocation
         var hoveredPet: PetView?
@@ -325,9 +340,10 @@ final class PetManager {
             let f = overlay.window.frame
             guard f.contains(mouse) else { continue }
             // The overlay sits a level above the Dock so the crabs walk in front of it,
-            // which means a crab parked on an icon would otherwise swallow the click that
-            // was meant for the icon. Inside the Dock's band we never take the mouse.
-            if let screen = overlay.window.screen {
+            // which means a crab parked on an icon can swallow the click that was meant
+            // for the icon. Unless they are allowed to stay clickable there, we simply
+            // never take the mouse inside the Dock's band.
+            if !Self.clickableOnDock, let screen = overlay.window.screen {
                 let dockDepth = screen.visibleFrame.minY - screen.frame.minY
                 if dockDepth > 4, mouse.y < screen.frame.minY + dockDepth { continue }
             }
