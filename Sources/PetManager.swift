@@ -359,6 +359,7 @@ final class PetManager {
     enum Effect: String, CaseIterable {
         case celebrate, needsYou, trouble, beer, clink, spin, balloon, rope, rocket
         case babies, wave, compact
+        case friday, saturday, monday
 
         var label: String {
             switch self {
@@ -374,6 +375,9 @@ final class PetManager {
             case .babies:    return "Spawn subagents 👶"
             case .wave:      return "Stadium wave 🌊"
             case .compact:   return "Compact context 🗜️"
+            case .friday:    return "Friday — deckchair 🌴"
+            case .saturday:  return "Saturday — hangover 🥴"
+            case .monday:    return "Monday — fed up 😒"
             }
         }
     }
@@ -401,6 +405,9 @@ final class PetManager {
                     p?.waveHop()
                 }
             }
+        case .friday, .saturday, .monday:
+            pet.dayMoodBreak(forced: effect == .friday ? .fridayChill
+                                   : effect == .saturday ? .saturdayHangover : .mondayDisgust)
         case .compact:
             pet.compactStart()
             DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak pet] in pet?.compactEnd() }

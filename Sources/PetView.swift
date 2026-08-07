@@ -132,6 +132,11 @@ final class PetView: NSView {
     /// separate clock for rope/rocket — see the traversal branch in tick()
     private var nextTraversalAt: CFTimeInterval = CACurrentMediaTime() + Double.random(in: 45...120)
     private var nextMumbleAt: CFTimeInterval = CACurrentMediaTime() + Double.random(in: 180...480)
+    /// Friday and Saturday earn a deckchair; Monday earns a scowl. Checked live rather than
+    /// cached, so a crab left running over midnight changes its tune with the calendar.
+    private var nextMoodAt: CFTimeInterval = CACurrentMediaTime() + Double.random(in: 120...400)
+    private var loungerLayer: CALayer?
+    private var moodUntil: CFTimeInterval = 0
     private var lastPokeAt: CFTimeInterval = 0
 
     // model + effort ("how wired is this crab")
@@ -885,6 +890,12 @@ final class PetView: NSView {
             // cooldown, then a one-in-three pick, and only if the crab happened to be
             // standing in the right place. Give them their own, much shorter clock that
             // only ticks while it is.
+            if state == .idle, now >= nextMoodAt, DayMood.today != .none,
+               beerMug == nil, loungerLayer == nil, traversal == nil {
+                nextMoodAt = now + Double.random(in: 420...900)
+                dayMoodBreak(now: now)
+                break
+            }
             if state == .idle, now >= nextTraversalAt, traversal == nil,
                currentSegment == 1 || currentSegment == 2 || currentSegment == 3 {
                 nextTraversalAt = now + Double.random(in: 100...220)
@@ -954,6 +965,23 @@ final class PetView: NSView {
     // ring at wherever it landed.
 
     private enum Traversal { case rope, rocket }
+
+    /// What the day of the week does to a made man.
+    enum DayMood {
+        case fridayChill        // deckchair, sunglasses, no notes
+        case saturdayHangover   // deckchair, but it hurts
+        case mondayDisgust      // upright and thoroughly fed up
+        case none
+
+        static var today: DayMood {
+            switch Calendar.current.component(.weekday, from: Date()) {
+            case 6: return .fridayChill        // Calendar: 1 = Sunday
+            case 7: return .saturdayHangover
+            case 2: return .mondayDisgust
+            default: return .none
+            }
+        }
+    }
     private var traversal: Traversal?
     private var travFrom = CGPoint.zero
     private var travTo = CGPoint.zero
@@ -1229,6 +1257,149 @@ final class PetView: NSView {
     }
 
     /// pixel beer mug: white foam, amber body, handle on the right
+    // MARK: - Day-of-week moods
+
+    /// Friday and Saturday: the crab unfolds a deckchair on the edge and lies in it.
+    /// Monday: no chair, just a very poor attitude.
+    func dayMoodBreak(now: CFTimeInterval = CACurrentMediaTime(), forced: DayMood? = nil) {
+        let mood = forced ?? DayMood.today
+        guard mood != .none, beerMug == nil, loungerLayer == nil else { return }
+
+        let kind: QuipKind
+        let seconds: Double
+        switch mood {
+        case .fridayChill:      kind = .friday;   seconds = 9
+        case .saturdayHangover: kind = .saturday; seconds = 11
+        case .mondayDisgust:    kind = .monday;   seconds = 6
+        case .none:             return
+        }
+
+        moodUntil = now + seconds
+        trickUntil = moodUntil          // the shared "busy with something" gate
+        slideRemaining = 0
+        legPhase = 0
+        legs.path = Self.legsFrameA
+        bubble.show(Quips.random(kind), for: seconds - 1.5)
+
+        if mood == .mondayDisgust {
+            // no prop: a slow, unimpressed head shake and a scowl
+            squint(true)
+            let shake = CAKeyframeAnimation(keyPath: "transform.rotation.z")
+            shake.values = [0, 0.09, -0.09, 0.07, -0.07, 0]
+            shake.keyTimes = [0, 0.2, 0.4, 0.6, 0.8, 1]
+            shake.duration = 2.2
+            shake.repeatCount = 2
+            rig.add(shake, forKey: "monday")
+            DispatchQueue.main.asyncAfter(deadline: .now() + seconds) { [weak self] in
+                self?.rig.removeAnimation(forKey: "monday")
+                self?.squint(false)
+            }
+            return
+        }
+
+        let chair = Self.makeLounger(hungover: mood == .saturdayHangover)
+        chair.position = CGPoint(x: 30, y: 16)
+        body.insertSublayer(chair, at: 0)        // behind the crab, it lies on it
+        loungerLayer = chair
+
+        let unfold = CASpringAnimation(keyPath: "transform.scale")
+        unfold.fromValue = 0.01
+        unfold.toValue = 1
+        unfold.damping = 11
+        unfold.initialVelocity = 4
+        unfold.duration = unfold.settlingDuration
+        chair.add(unfold, forKey: "unfold")
+
+        // lean back into it
+        let recline = CABasicAnimation(keyPath: "transform.rotation.z")
+        recline.fromValue = 0
+        recline.toValue = -0.34
+        recline.duration = 0.7
+        recline.fillMode = .forwards
+        recline.isRemovedOnCompletion = false
+        rig.add(recline, forKey: "recline")
+
+        if mood == .saturdayHangover {
+            // a queasy sway rather than a contented one
+            let sway = CAKeyframeAnimation(keyPath: "transform.translation.y")
+            sway.values = [0, -1.5, 0, -1.5, 0]
+            sway.keyTimes = [0, 0.25, 0.5, 0.75, 1]
+            sway.duration = 2.6
+            sway.repeatCount = Float(seconds / 2.6)
+            sway.beginTime = CACurrentMediaTime() + 0.7
+            rig.add(sway, forKey: "queasy")
+        }
+        squint(true)
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + seconds - 0.6) { [weak self] in
+            guard let self else { return }
+            let fold = CABasicAnimation(keyPath: "transform.rotation.z")
+            fold.fromValue = -0.34
+            fold.toValue = 0
+            fold.duration = 0.5
+            self.rig.add(fold, forKey: "recline")
+            self.rig.removeAnimation(forKey: "queasy")
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + seconds) { [weak self] in
+            guard let self else { return }
+            self.loungerLayer?.removeFromSuperlayer()
+            self.loungerLayer = nil
+            self.rig.removeAnimation(forKey: "recline")
+            self.squint(false)
+        }
+    }
+
+    /// A striped pixel deckchair. Same drawing approach as the beer mug: flat rects, no
+    /// image assets anywhere in this repo.
+    private static func makeLounger(hungover: Bool) -> CALayer {
+        let px: CGFloat = 3
+        let group = CALayer()
+        group.bounds = CGRect(x: 0, y: 0, width: 11 * px, height: 7 * px)
+        group.anchorPoint = CGPoint(x: 0.5, y: 0.1)
+
+        func rect(_ col: Int, _ row: Int) -> CGRect {
+            CGRect(x: CGFloat(col) * px, y: CGFloat(6 - row) * px, width: px, height: px)
+        }
+
+        let scale = NSScreen.main?.backingScaleFactor ?? 2
+
+        // the reclined seat: a back that rises to the left, then a flat base
+        let canvasPath = CGMutablePath()
+        for (col, row) in [(0,1),(1,1),(1,2),(2,2),(2,3),(3,3),(3,4),(4,4),
+                           (5,4),(6,4),(7,4),(8,4),(9,4)] {
+            canvasPath.addRect(rect(col, row))
+        }
+        let canvas = CAShapeLayer()
+        canvas.path = canvasPath
+        canvas.fillColor = (hungover
+            ? NSColor(srgbRed: 0.42, green: 0.45, blue: 0.52, alpha: 1)     // washed out
+            : NSColor(srgbRed: 0.95, green: 0.52, blue: 0.28, alpha: 1)).cgColor
+        canvas.contentsScale = scale
+        group.addSublayer(canvas)
+
+        // the stripe every deckchair has
+        let stripePath = CGMutablePath()
+        for (col, row) in [(1,1),(3,3),(6,4),(8,4)] { stripePath.addRect(rect(col, row)) }
+        let stripe = CAShapeLayer()
+        stripe.path = stripePath
+        stripe.fillColor = NSColor(srgbRed: 0.98, green: 0.93, blue: 0.85, alpha: 1).cgColor
+        stripe.contentsScale = scale
+        group.addSublayer(stripe)
+
+        // legs
+        let framePath = CGMutablePath()
+        for (col, row) in [(1,3),(2,4),(3,5),(4,5),(9,5),(9,6),(4,6)] {
+            framePath.addRect(rect(col, row))
+        }
+        let frame = CAShapeLayer()
+        frame.path = framePath
+        frame.fillColor = NSColor(srgbRed: 0.38, green: 0.28, blue: 0.20, alpha: 1).cgColor
+        frame.contentsScale = scale
+        group.addSublayer(frame)
+
+        return group
+    }
+
     private static func makeBeerMug() -> CALayer {
         let px: CGFloat = 3
         let group = CALayer()

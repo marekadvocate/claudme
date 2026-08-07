@@ -23,6 +23,9 @@ enum QuipKind {
     case compacting
     case compacted
     case grumble       // sick of this patch of floor, moving on
+    case friday        // deckchair weather
+    case saturday      // deckchair, but it hurts
+    case monday        // no chair, just an attitude
 }
 
 enum Lang: String, CaseIterable {
@@ -111,6 +114,9 @@ enum Quips {
 
     private static let table: [Lang: [QuipKind: [String]]] = [
         .en: [
+            .friday: ["Friday, boss.", "Nothing until Monday.", "The chair earned itself.", "Off the clock."],
+            .saturday: ["Never again.", "Keep it down.", "Whose idea was that?", "I am not well."],
+            .monday: ["Monday. Again.", "I want no part of this.", "Who scheduled this?", "Not today."],
             .grumble: ["Screw this corner.", "I'm done here, boss.", "Somebody else can watch it.", "That's me for tonight.", "Not my problem now."],
             .done: ["It's done, boss.", "Taken care of.", "Clean job.", "Handled.", "No witnesses.", "That's that.", "Job's finished.", "Like we never touched it."],
             .working: ["On it.", "Working.", "Doing the rounds.", "Almost there.", "…"],
@@ -125,6 +131,9 @@ enum Quips {
             .sleeping: ["z Z"],
         ],
         .sk: [
+            .friday: ["Piatok, šéfe.", "Do pondelka nič.", "Toto som si zaslúžil.", "Mám padla."],
+            .saturday: ["Už nikdy.", "Ticho, prosím ťa.", "Čí to bol nápad?", "Je mi zle."],
+            .monday: ["Pondelok. Zase.", "Do tohto nejdem.", "Kto to takto naplánoval?", "Dnes nie."],
             .grumble: ["Serem na tento kút.", "Ja tu končím, šéfe.", "Nech to stráži niekto iný.", "Pre dnes som skončil.", "Už to nie je môj problém."],
             .done: ["Hotovo, šéfe.", "Vybavené.", "Čistá robota.", "Postarané.", "Žiadni svedkovia.", "A je to.", "Šlus.", "Ani stopa po nás."],
             .working: ["Makám na tom.", "Robím.", "Obchádzam terén.", "Už to skoro je.", "…"],
@@ -139,6 +148,9 @@ enum Quips {
             .sleeping: ["z Z"],
         ],
         .cs: [
+            .friday: ["Pátek, šéfe.", "Do pondělí nic.", "Tohle jsem si zasloužil.", "Mám padla."],
+            .saturday: ["Už nikdy.", "Ticho, prosím tě.", "Čí to byl nápad?", "Je mi zle."],
+            .monday: ["Pondělí. Zase.", "Do tohohle nejdu.", "Kdo to takhle naplánoval?", "Dneska ne."],
             .grumble: ["Seru na tenhle kout.", "Já tu končím, šéfe.", "Ať to hlídá někdo jinej.", "Pro dnešek jsem skončil.", "Už to není můj problém."],
             .done: ["Hotovo, šéfe.", "Vyřízeno.", "Čistá práce.", "Postaráno.", "Žádní svědci.", "A je to.", "Šlus.", "Ani stopa po nás."],
             .working: ["Makám na tom.", "Dělám.", "Obcházím terén.", "Už to skoro je.", "…"],
@@ -153,6 +165,9 @@ enum Quips {
             .sleeping: ["z Z"],
         ],
         .de: [
+            .friday: ["Freitag, Chef.", "Bis Montag nichts.", "Den hab ich mir verdient.", "Feierabend."],
+            .saturday: ["Nie wieder.", "Leiser, bitte.", "Wessen Idee war das?", "Mir ist übel."],
+            .monday: ["Montag. Schon wieder.", "Ohne mich.", "Wer plant so was?", "Heute nicht."],
             .grumble: ["Ich hab die Ecke satt.", "Für mich ist Feierabend.", "Soll ein anderer aufpassen.", "Nicht mehr mein Problem.", "Ich bin raus, Chef."],
             .done: ["Erledigt, Chef.", "Ist geregelt.", "Keine Zeugen.", "Sauber gemacht.", "Niemand sah was.", "War ein Klacks.", "Abgehakt, Chef.", "Problem ist weg."],
             .working: ["Bin dran.", "Läuft, Chef.", "Wird gemacht.", "Kleinen Moment.", "…"],
@@ -167,6 +182,9 @@ enum Quips {
             .sleeping: ["z Z"],
         ],
         .el: [
+            .friday: ["Παρασκευή, αρχηγέ.", "Τίποτα ως Δευτέρα.", "Το άξιζα.", "Σχόλασα."],
+            .saturday: ["Ποτέ ξανά.", "Σιγά, σε παρακαλώ.", "Ποιανού ιδέα ήταν;", "Δεν πάω καλά."],
+            .monday: ["Δευτέρα. Πάλι.", "Δεν παίζω.", "Ποιος το κανόνισε;", "Όχι σήμερα."],
             .grumble: ["Βαρέθηκα εδώ πέρα.", "Εγώ τελείωσα, αρχηγέ.", "Ας το φυλάει άλλος.", "Δεν με αφορά πια.", "Σχόλασα."],
             .done: ["Έγινε, αρχηγέ.", "Καθαρή δουλειά.", "Τακτοποιήθηκε.", "Κανένα ίχνος.", "Ήσυχα και ωραία.", "Δεν πήρε κανείς χαμπάρι.", "Στην εντέλεια.", "Άλλο τίποτα;"],
             .working: ["…", "Δουλεύω το θέμα.", "Μη με ζορίζεις.", "Ησυχία, το ψήνω.", "Το 'χω, το 'χω."],
@@ -181,6 +199,9 @@ enum Quips {
             .sleeping: ["z Z"],
         ],
         .es: [
+            .friday: ["Viernes, jefe.", "Nada hasta el lunes.", "Me la he ganado.", "Se acabó por hoy."],
+            .saturday: ["Nunca más.", "Más bajo, por favor.", "¿De quién fue la idea?", "Estoy fatal."],
+            .monday: ["Lunes. Otra vez.", "Yo no entro en esto.", "¿Quién planeó esto?", "Hoy no."],
             .grumble: ["Me harté de esta esquina.", "Yo aquí terminé, jefe.", "Que vigile otro.", "Ya no es mi problema.", "Por hoy lo dejo."],
             .done: ["Hecho, jefe.", "Ya está.", "Trabajo limpio.", "Sin testigos.", "Nadie vio nada.", "Como si nada.", "Asunto resuelto.", "Ni rastro nuestro."],
             .working: ["En ello.", "Manos a la obra.", "Dando una vuelta.", "Ya casi está.", "…"],
@@ -195,6 +216,9 @@ enum Quips {
             .sleeping: ["z Z"],
         ],
         .fr: [
+            .friday: ["Vendredi, patron.", "Rien avant lundi.", "Je l'ai mérité.", "J'ai fini."],
+            .saturday: ["Plus jamais.", "Moins fort, pitié.", "C'était l'idée de qui ?", "Je suis mal."],
+            .monday: ["Lundi. Encore.", "Sans moi.", "Qui a prévu ça ?", "Pas aujourd'hui."],
             .grumble: ["J'en ai marre de ce coin.", "Moi j'ai fini, patron.", "Qu'un autre surveille.", "C'est plus mon problème.", "Pour moi c'est terminé."],
             .done: ["C'est réglé, patron.", "Emballé, c'est pesé.", "Du travail propre.", "Sans témoins.", "Personne n'a rien vu.", "L'affaire est faite.", "Nickel.", "Aucune trace."],
             .working: ["Je m'en occupe.", "Ça bosse.", "Je fais le tour.", "Presque fini.", "…"],
@@ -209,6 +233,9 @@ enum Quips {
             .sleeping: ["z Z"],
         ],
         .hi: [
+            .friday: ["शुक्रवार है, बॉस।", "सोमवार तक कुछ नहीं।", "यह कुर्सी मेरा हक़ है।", "छुट्टी।"],
+            .saturday: ["अब कभी नहीं।", "धीरे बोलो, प्लीज़।", "किसका आइडिया था?", "तबीयत ठीक नहीं।"],
+            .monday: ["फिर सोमवार।", "मैं इसमें नहीं हूँ।", "यह किसने तय किया?", "आज नहीं।"],
             .grumble: ["इस कोने से ऊब गया।", "मेरा काम खत्म, बॉस।", "कोई और देखे।", "अब मेरी बला से।", "आज के लिए बस।"],
             .done: ["काम हो गया, भाई।", "काम तमाम।", "सफ़ाई हो गई।", "निपटा दिया।", "कोई गवाह नहीं।", "बस, ख़तम।", "एकदम साफ़।", "जैसे हुआ ही नहीं।"],
             .working: ["लगा हुआ हूँ।", "काम चालू है।", "गश्त पे हूँ।", "बस थोड़ा और।", "…"],
@@ -223,6 +250,9 @@ enum Quips {
             .sleeping: ["z Z"],
         ],
         .it: [
+            .friday: ["Venerdì, capo.", "Niente fino a lunedì.", "Me la sono guadagnata.", "Ho staccato."],
+            .saturday: ["Mai più.", "Più piano, ti prego.", "Di chi è stata l'idea?", "Sto male."],
+            .monday: ["Lunedì. Di nuovo.", "Io non ci sto.", "Chi ha organizzato questo?", "Oggi no."],
             .grumble: ["Basta con questo angolo.", "Io ho finito, capo.", "Ci pensi un altro.", "Non è più affar mio.", "Per stasera ho chiuso."],
             .done: ["Fatto, capo.", "Sistemato.", "Lavoro pulito.", "Nessun testimone.", "Nessuno ha visto niente.", "Cosa fatta capo ha.", "Tutto a posto.", "Manco una traccia."],
             .working: ["Ci penso io.", "Sto lavorando.", "Faccio il giro.", "Ci siamo quasi.", "…"],
@@ -237,6 +267,9 @@ enum Quips {
             .sleeping: ["z Z"],
         ],
         .ja: [
+            .friday: ["金曜だ、親父", "月曜まで何もせん", "この椅子は当然だ", "上がりだ"],
+            .saturday: ["二度とやらん", "静かにしてくれ", "誰の案だ、あれは", "具合が悪い"],
+            .monday: ["また月曜か", "俺は降りる", "誰が組んだんだ", "今日は無理だ"],
             .grumble: ["この隅はもう飽きた", "俺は上がりだ、親父", "誰か代われ", "もう知らん", "今日はここまでだ"],
             .done: ["終わりやした、親分", "片付けやした", "カタはつけました", "始末しときやした", "キレイに掃除済み", "証拠は残してねぇ", "お安いご用で", "完璧でさぁ"],
             .working: ["やってやす", "仕事中でさぁ", "…", "今、詰めてやす", "もうちょい待ってくんな"],
@@ -251,6 +284,9 @@ enum Quips {
             .sleeping: ["z Z"],
         ],
         .ko: [
+            .friday: ["금요일입니다, 보스.", "월요일까지 아무것도.", "이 의자는 당연하죠.", "퇴근입니다."],
+            .saturday: ["두 번은 안 합니다.", "조용히 좀.", "누구 아이디어였죠?", "몸이 안 좋습니다."],
+            .monday: ["또 월요일.", "저는 빠지겠습니다.", "누가 이렇게 짰죠?", "오늘은 아닙니다."],
             .grumble: ["이 구석 지겹다.", "저는 여기까지입니다.", "딴 놈이 지켜라.", "이제 내 일 아니다.", "오늘은 끝."],
             .done: ["끝냈습니다, 형님", "처리했습니다", "깔끔하게 정리", "뒤탈 없습니다", "목격자 없습니다", "손 좀 봤습니다", "다 묻었습니다", "걱정 마이소, 형님"],
             .working: ["하고 있습니다", "작업 중입니다", "…", "손보는 중", "곧 됩니다, 형님"],
@@ -265,6 +301,9 @@ enum Quips {
             .sleeping: ["z Z"],
         ],
         .nl: [
+            .friday: ["Vrijdag, baas.", "Niks tot maandag.", "Die heb ik verdiend.", "Ik ben klaar."],
+            .saturday: ["Nooit meer.", "Zachtjes, alsjeblieft.", "Wiens idee was dat?", "Ik voel me beroerd."],
+            .monday: ["Maandag. Alweer.", "Zonder mij.", "Wie heeft dit gepland?", "Vandaag niet."],
             .grumble: ["Ik baal van deze hoek.", "Ik ben klaar, baas.", "Laat een ander kijken.", "Niet meer mijn probleem.", "Voor vandaag klaar."],
             .done: ["Geregeld, baas.", "Het is gepiept.", "Geen getuigen.", "Netjes opgeruimd.", "Klaar is Kees.", "Niemand zag wat.", "Makkie, baas.", "Weg is weg."],
             .working: ["Bezig, baas.", "Komt voor elkaar.", "Ik regel het.", "Momentje.", "…"],
@@ -279,6 +318,9 @@ enum Quips {
             .sleeping: ["z Z"],
         ],
         .pl: [
+            .friday: ["Piątek, szefie.", "Nic do poniedziałku.", "Zasłużyłem.", "Fajrant."],
+            .saturday: ["Nigdy więcej.", "Ciszej, proszę.", "Czyj to był pomysł?", "Źle się czuję."],
+            .monday: ["Poniedziałek. Znowu.", "Beze mnie.", "Kto to zaplanował?", "Nie dzisiaj."],
             .grumble: ["Mam dość tego kąta.", "Ja kończę, szefie.", "Niech inny pilnuje.", "To już nie mój problem.", "Na dziś koniec."],
             .done: ["Załatwione, szefie.", "Po robocie.", "Czysto.", "Bez świadków.", "Leży.", "Grzecznie poszło.", "Masz to jak w banku.", "Temat zamknięty."],
             .working: ["Robi się.", "Działamy.", "Kręcę temat.", "…", "Jestem na temacie."],
@@ -293,6 +335,9 @@ enum Quips {
             .sleeping: ["z Z"],
         ],
         .pt: [
+            .friday: ["Sexta, chefe.", "Nada até segunda.", "Mereci essa.", "Encerrei."],
+            .saturday: ["Nunca mais.", "Mais baixo, por favor.", "De quem foi a ideia?", "Estou mal."],
+            .monday: ["Segunda. De novo.", "Não conte comigo.", "Quem planejou isso?", "Hoje não."],
             .grumble: ["Cansei desse canto.", "Eu terminei, chefe.", "Que outro vigie.", "Já não é problema meu.", "Por hoje chega."],
             .done: ["Tá feito, chefe.", "Resolvido.", "Serviço limpo.", "Sem testemunha.", "Eu nem tava lá.", "Tá tudo certo.", "Tá limpo, chefia.", "Pode conferir."],
             .working: ["Tô nessa.", "Trabalhando.", "Dando um rolê.", "Quase lá.", "…"],
@@ -307,6 +352,9 @@ enum Quips {
             .sleeping: ["z Z"],
         ],
         .ru: [
+            .friday: ["Пятница, шеф.", "До понедельника ничего.", "Я заслужил.", "Смена окончена."],
+            .saturday: ["Больше никогда.", "Тише, умоляю.", "Чья это была идея?", "Мне нехорошо."],
+            .monday: ["Понедельник. Опять.", "Я в этом не участвую.", "Кто это придумал?", "Не сегодня."],
             .grumble: ["Надоел мне этот угол.", "Я закончил, шеф.", "Пусть другой сторожит.", "Уже не моя забота.", "На сегодня всё."],
             .done: ["Готово, шеф.", "Вопрос решён.", "Чисто сработано.", "Без свидетелей.", "Всё пучком.", "Дело сделано.", "Как заказывали.", "Тип-топ, босс."],
             .working: ["Работаю.", "Уже в теме.", "Решаю вопрос.", "…", "Кручусь."],
@@ -321,6 +369,9 @@ enum Quips {
             .sleeping: ["z Z"],
         ],
         .sv: [
+            .friday: ["Fredag, chefen.", "Inget förrän måndag.", "Den har jag förtjänat.", "Jag har slutat."],
+            .saturday: ["Aldrig igen.", "Tystare, tack.", "Vems idé var det?", "Jag mår illa."],
+            .monday: ["Måndag. Igen.", "Inte med mig.", "Vem planerade det här?", "Inte idag."],
             .grumble: ["Jag är trött på hörnet.", "Jag är klar, chefen.", "Nån annan får vakta.", "Inte mitt problem längre.", "Slut för idag."],
             .done: ["Fixat, boss.", "Det är ordnat.", "Inga vittnen.", "Städat och klart.", "Ingen såg nåt.", "En barnlek.", "Klart som korvspad.", "Problemet är borta."],
             .working: ["Jobbar på det.", "Jag fixar det.", "På gång, boss.", "Ett ögonblick.", "…"],
@@ -335,6 +386,9 @@ enum Quips {
             .sleeping: ["z Z"],
         ],
         .tr: [
+            .friday: ["Cuma, reis.", "Pazartesiye kadar yok.", "Hak ettim.", "Paydos."],
+            .saturday: ["Bir daha asla.", "Sessiz ol, lütfen.", "Kimin fikriydi bu?", "İyi değilim."],
+            .monday: ["Pazartesi. Yine.", "Ben yokum.", "Bunu kim ayarladı?", "Bugün olmaz."],
             .grumble: ["Bu köşeden bıktım.", "Ben bitirdim reis.", "Başkası baksın.", "Artık benim sorunum değil.", "Bugünlük bu kadar."],
             .done: ["Halloldu reis.", "İş bitti.", "Temiz iş.", "İcabına bakıldı.", "Tanık yok.", "Tamamdır.", "Sildim süpürdüm.", "Hiç uğramadık bile."],
             .working: ["Hallediyorum.", "Çalışıyorum.", "Tur atıyorum.", "Az kaldı.", "…"],
@@ -349,6 +403,9 @@ enum Quips {
             .sleeping: ["z Z"],
         ],
         .uk: [
+            .friday: ["П'ятниця, шефе.", "До понеділка нічого.", "Я заслужив.", "Зміна скінчилась."],
+            .saturday: ["Більше ніколи.", "Тихіше, благаю.", "Чия це була ідея?", "Мені зле."],
+            .monday: ["Понеділок. Знову.", "Я в цьому не беру участі.", "Хто це вигадав?", "Не сьогодні."],
             .grumble: ["Набрид мені цей кут.", "Я закінчив, шефе.", "Хай інший вартує.", "Вже не мій клопіт.", "На сьогодні все."],
             .done: ["Зроблено, шефе.", "Питання закрите.", "Без свідків.", "Чисто спрацював.", "Все як треба.", "Тихо і красиво.", "Як просили, шефе.", "Ніхто нічого не бачив."],
             .working: ["Роблю.", "Працюємо.", "Вже в темі.", "…", "Кручусь, шефе."],
@@ -363,6 +420,9 @@ enum Quips {
             .sleeping: ["z Z"],
         ],
         .zh: [
+            .friday: ["周五了，大哥", "周一之前什么都不干", "这椅子我配得上", "收工"],
+            .saturday: ["再也不来了", "小声点", "谁出的主意", "我不舒服"],
+            .monday: ["又是周一", "这事我不掺和", "谁排的班", "今天不行"],
             .grumble: ["这角落待腻了", "我收工了，大哥", "让别人看着吧", "不关我事了", "今天到此为止"],
             .done: ["办妥了，大哥", "搞定收工", "干净利落", "手尾干净", "没人看见", "小菜一碟", "大哥放心", "全清了"],
             .working: ["正在办", "忙着呢", "…", "快好了，大哥", "别催，大哥"],

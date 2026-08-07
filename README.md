@@ -72,6 +72,9 @@ folder. Nothing else is left behind.
 | jump, confetti, *"It's done, boss."* | turn just finished |
 | curled up on the bottom edge, `z Z` | idle more than 10 minutes |
 | wakes up, grumbles, shuffles somewhere else | asleep in the same spot for a minute |
+| stretched out in a striped deckchair | it's Friday |
+| in the deckchair, but grey and queasy | it's Saturday |
+| shaking its head, no chair, no patience | it's Monday |
 | ⚠️ bubble | rate limit or API error |
 | chewing, 🗜️ bubble, then a burp | compacting its context |
 | little crabs bobbing alongside | that session's subagents |
@@ -126,6 +129,13 @@ says so, and walks off to a different stretch of the floor, at least a fifth of 
 A session you parked this morning is a crew member with somewhere better to be, not a statue in
 one corner.
 
+**The week** — the family knows what day it is. On a **Friday** an idle crab unfolds a striped
+deckchair on the edge, leans back and tells you it's Friday. On a **Saturday** it does the same
+thing, but the chair is washed out, the crab sways queasily and the line is *"Never again."* On a
+**Monday** there is no chair at all — just a slow, unimpressed head shake and *"Monday. Again."*
+It picks its moment every 7–15 minutes and only when the session is idle, so it never interrupts
+work. Every mood is written in all nineteen languages.
+
 **Traversals** — a crab on the ceiling can rappel to the floor on a rope 🪢; one on a side wall
 can rocket across to the other 🚀. Both leave the perimeter for a few seconds, then rejoin it
 wherever they land.
@@ -143,7 +153,7 @@ throughout: the music changes how they move, never what they're doing. Switch it
 |---|---|
 | **The family** | one row per session: rank, colour, status. Click a row to show its terminal |
 | **Language** | nineteen of them, plus the Clean / Street talk switch |
-| **Playground** | fire any of the twelve effects on demand instead of waiting out its timer |
+| **Playground** | fire any of the fifteen effects on demand instead of waiting out its timer |
 | **Party mode** | whether music makes them dance. On by default |
 | **3D crabs** | render the family as isometric voxels, like the app icon |
 | **Check for updates…** | pull, rebuild and relaunch |

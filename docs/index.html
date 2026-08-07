@@ -387,7 +387,7 @@
   }
   /* the credit lines now sit on the desktop itself */
   .deskcredit{
-    position:absolute;left:26px;bottom:34px;z-index:2;margin:0;max-width:none;
+    position:absolute;left:26px;bottom:76px;z-index:2;margin:0;max-width:none;
     white-space:nowrap;font:500 .7rem/1.7 var(--font);color:#6f6459;letter-spacing:.01em
   }
   .deskcredit a{color:#b0765c}
@@ -513,6 +513,11 @@
   body.promo .track > header > .wrap{padding:0;height:100%}
   body.promo .track > header .stage{margin:0;width:100%;margin-left:0;transform:none}
   body.promo .track > header .screen{height:100dvh;min-height:0}
+  body.promo #promoReveal{
+    position:fixed;inset:0;z-index:9500;background:#050404;pointer-events:none;
+    opacity:1;transition:opacity .9s ease
+  }
+  body.promo #promoReveal.gone{opacity:0}
   #promoCard{
     position:fixed;inset:0;z-index:9000;display:grid;place-items:center;
     background:radial-gradient(80% 60% at 50% 50%,rgba(7,6,5,.86),rgba(7,6,5,.97));
@@ -520,24 +525,31 @@
   }
   #promoCard.on{opacity:1}
   #promoCard .line{
-    font:700 clamp(1.6rem,4.6vw,3.4rem)/1.14 var(--display);color:#f4ece2;
+    font:700 clamp(2rem,5.6vw,4.2rem)/1.12 var(--display);color:#fff8f0;
     letter-spacing:-.02em;max-width:22ch;margin:0 auto
   }
   #promoCard .sub2{
-    margin-top:.9rem;font:500 clamp(.8rem,1.5vw,1.05rem)/1.5 var(--mono);color:#b0a294;
+    margin-top:1.1rem;font:600 clamp(1rem,2vw,1.5rem)/1.5 var(--mono);color:#d9c9b8;
     letter-spacing:.04em
   }
   #promoLower{
-    position:fixed;left:0;right:0;bottom:7%;z-index:9000;text-align:center;
-    opacity:0;transition:opacity .28s ease;pointer-events:none;padding:0 6vw
+    position:fixed;left:0;right:0;bottom:6%;z-index:9000;text-align:center;
+    opacity:0;transition:opacity .2s ease;pointer-events:none;padding:0 5vw
   }
   #promoLower.on{opacity:1}
   #promoLower span{
-    display:inline-block;background:rgba(9,8,7,.82);border:1px solid rgba(217,119,87,.35);
-    border-radius:8px;padding:.6rem 1.1rem;
-    font:600 clamp(.85rem,1.7vw,1.25rem)/1.3 var(--font);color:#f2e8dd;
-    backdrop-filter:blur(6px)
+    display:inline-block;background:#0a0908;
+    border:3px solid rgba(217,119,87,.9);border-radius:12px;
+    padding:1rem 1.8rem;box-shadow:0 0 0 8px rgba(10,9,8,.72), 0 22px 60px rgba(0,0,0,.9);
+    font:700 clamp(1.5rem,2.6vw,2.6rem)/1.3 var(--mono);color:#fff;
+    letter-spacing:.004em;white-space:pre-wrap;text-align:left;max-width:88vw
   }
+  /* the block cursor that trails the typing */
+  #promoLower b{
+    display:inline-block;width:.62em;height:1.02em;vertical-align:-.16em;margin-left:.06em;
+    background:#d97757;animation:promoBlink .62s steps(1,end) infinite
+  }
+  @keyframes promoBlink{0%,49%{opacity:1}50%,100%{opacity:0}}
 
   /* ==== THEME:START ==== After Hours — The family works at night: a near-black desk lit by one warm lamp overhead, charcoal windows set in bone-warm type, and the crab's terracotta as the only colour in the room. */
   :root{
@@ -702,6 +714,13 @@
       <tr><td>Little crabs bobbing alongside</td><td>That session's subagents</td></tr>
       <tr><td>🕶️ black shades</td><td>Running with <code>--dangerously-skip-permissions</code></td></tr>
       <tr><td>🛰️ orbiting satellite</td><td>Remote or bridged session</td></tr>
+        <tr><td>🤓 round glasses</td><td>Plan mode</td></tr>
+        <tr><td>Chewing, then a burp</td><td>Compacting its context</td></tr>
+        <tr><td>Wakes, grumbles, walks off</td><td>Asleep in one spot for a minute</td></tr>
+        <tr><td>Stretched out in a deckchair</td><td>It's Friday</td></tr>
+        <tr><td>Deckchair, grey and queasy</td><td>It's Saturday</td></tr>
+        <tr><td>Head shake, no chair</td><td>It's Monday</td></tr>
+        <tr><td>Bigger, darker crab</td><td>Bigger model</td></tr>
     </table>
   </div></div></div>
 </section>
@@ -723,8 +742,9 @@
     <div class="grid">
       <div class="card"><span class="ico">🎩</span><h3>Unique colours</h3><p>Each live crab wears a differently coloured fedora, matching its dot in the menubar. Learn them once and you never need the label.</p></div>
       <div class="card"><span class="ico">🍺</span><h3>A life of its own</h3><p>They greet each other in passing, take beer breaks, clink glasses with neighbours and do a stadium wave when the last busy session finishes.</p></div>
+      <div class="card"><span class="ico">🌴</span><h3>They know what day it is</h3><p>Friday, an idle crab unfolds a striped deckchair on the edge and leans back. Saturday it does the same, greyer and queasier — <em>“Never again.”</em> Monday there is no chair, just a slow head shake.</p></div>
       <div class="card"><span class="ico">🖱️</span><h3>Click to jump</h3><p>Click a crab and the terminal running that session comes to the front. Right-click for its working directory and status.</p></div>
-      <div class="card"><span class="ico">🌍</span><h3>Speaks your language</h3><p>Nineteen languages out of the box, each written in its own crime-fiction register, not translated — plus a street-talk version of every one.</p></div>
+      <div class="card"><span class="ico">🌍</span><h3>Speaks your language</h3><p>Nineteen languages out of the box — English, Slovak, Czech, German, Greek, Spanish, French, Hindi, Italian, Japanese, Korean, Dutch, Polish, Portuguese, Russian, Swedish, Turkish, Ukrainian, Chinese — each written in its own crime-fiction register, not translated, plus a street-talk version of every one that swears.</p></div>
     </div>
   </div></div></div>
 </section>
@@ -858,7 +878,10 @@ open build/Claudme.app</pre>
 <script>
 (() => {
   // crabs scale with the stage — five 3px-grid crabs would swamp a phone
-  const PX = innerWidth < 640 ? 3 : innerWidth < 900 ? 3.5 : 4.5;
+  // Three times the old raster: at 4.5 a crab was ~50px on a 1500px screen and simply
+  // read as noise, both on the page and in the promo film. Phones get a smaller jump
+  // so the family doesn't swallow a 390px viewport.
+  const PX = innerWidth < 640 ? 6 : innerWidth < 900 ? 10 : 13;
   const GRID_W = 11;
   const CRAB = '#d97757', INK = '#1e1e1c';
   const CAPS = ['#1f3b8a','#0d9488','#f9cc15','#7c3aed','#17a34a','#ec4899','#0ea5e9','#dc2626'];
@@ -1001,6 +1024,9 @@ open build/Claudme.app</pre>
     // nudge the body so its feet touch the edge, whatever the rotation
     const off = [[0,-H/2],[ -H/2,0],[0,H/2],[H/2,0]][seg];
     const hop = c.hop ? Math.sin(c.hop*Math.PI)*9 : 0;
+    // a deckchair is drawn under the crab and the body leans back into it
+    const moody = c.mood && performance.now() < (c.moodUntil || 0);
+    if (!moody && c.mood){ c.mood = null; if (c.chairEl){ c.chairEl.remove(); c.chairEl = null; } }
     const b = c.dance ? c.beat : 0;
     const bob  = c.dance ? Math.abs(Math.sin(b)) * 7 : 0;   // away from the edge
     const sway = c.dance ? Math.sin(b * 0.5) * 5 : 0;       // along it
@@ -1010,8 +1036,29 @@ open build/Claudme.app</pre>
     const hy = seg===0 ? -lift : seg===2 ? lift : sway;
 
     const bx = x + off[0] + hx, by = y + off[1] + hy;   // body centre in screen space
+    const lean = moody && c.mood !== 'monday' ? -19 : 0;
+    const nod  = moody && c.mood === 'monday' ? Math.sin(performance.now()/220) * 7 : 0;
     c.el.style.transform =
-      `translate(${bx - W/2}px, ${by - H/2}px) rotate(${rot + tilt}deg)`;
+      `translate(${bx - W/2}px, ${by - H/2}px) rotate(${rot + tilt + lean + nod}deg)`;
+
+    if (moody && c.mood !== 'monday'){
+      if (!c.chairEl){
+        const ch = document.createElement('canvas');
+        ch.className = 'crab';
+        ch.width = 13 * PX; ch.height = 8 * PX;
+        ch.style.zIndex = 1;
+        screen.appendChild(ch);
+        const g = ch.getContext('2d');
+        const cell = (col,row,col2) => { g.fillStyle = col2; g.fillRect(col*PX,row*PX,PX,PX); };
+        for (const [x,y] of [[0,2],[1,2],[1,3],[2,3],[2,4],[3,4],[4,5],[5,5],[6,5],[7,5],[8,5],[9,5],[10,5]])
+          cell(x,y,c.chair);
+        for (const [x,y] of [[1,2],[3,4],[6,5],[9,5]]) cell(x,y,'#faeedd');
+        for (const [x,y] of [[1,4],[2,5],[3,6],[4,6],[10,6],[10,7],[4,7]]) cell(x,y,'#5f4633');
+        c.chairEl = ch;
+      }
+      c.chairEl.style.transform =
+        `translate(${bx - (13*PX)/2}px, ${by - H/2 + H*0.30}px) rotate(${rot}deg)`;
+    } else if (c.chairEl){ c.chairEl.remove(); c.chairEl = null; }
 
     // On the ceiling the label hangs below the crab; everywhere else it sits above.
     // Both are clamped so they never run off the screen at a corner or a side wall.
@@ -1087,7 +1134,7 @@ open build/Claudme.app</pre>
 
   /// Babies sit alongside the parent, drawn at half scale and bottom-aligned with it,
   /// so they never stick out past the edge the parent is standing on.
-  const BPX = 2, BW = GRID_W*BPX, BH = ROWS*BPX;
+  const BPX = Math.max(3, Math.round(PX * 0.42)), BW = GRID_W*BPX, BH = ROWS*BPX;
   function babies(c, on){
     c.babies.forEach(b=>b.remove()); c.babies = [];
     if (!on) return;
@@ -1161,6 +1208,7 @@ open build/Claudme.app</pre>
     ['beer','Beer 🍺'], ['clink','Clink 🍻'], ['subs','Subagents 👶'],
     ['spin','Spin 🌀'], ['rope','Rope 🪢'], ['rocket','Rocket 🚀'],
     ['compact','Compact 🗜️'], ['wave','Wave 🌊'],
+    ['friday','Friday 🌴'], ['saturday','Saturday 🥴'], ['monday','Monday 😒'],
   ];
   let lastAct = -1;
   const shuffleBtn = document.getElementById('shuffle');
@@ -1203,6 +1251,22 @@ open build/Claudme.app</pre>
         c.travFrom = c.t;
         c.travTo = act === 'rope' ? 0.0 : (c.t + 0.5) % 1;   // floor, or straight across
         say(c, act === 'rope' ? '🪢' : '🚀', 2200);
+      }
+      // the week: Friday and Saturday get a deckchair, Monday gets an attitude
+      if (act === 'friday' || act === 'saturday' || act === 'monday'){
+        const lines = {
+          friday:  ['Friday, boss.', 'Nothing until Monday.', 'Off the clock.'],
+          saturday:['Never again.', 'Keep it down.', 'I am not well.'],
+          monday:  ['Monday. Again.', 'Not today.', 'Who scheduled this?'],
+        }[act];
+        say(c, pick(lines), 4200);
+        c.state = 'party'; c.until = now + 4200;
+        if (act === 'monday'){
+          c.mood = 'monday'; c.moodUntil = now + 4200;
+        } else {
+          c.mood = act; c.moodUntil = now + 4200;
+          c.chair = act === 'saturday' ? '#6b7280' : '#f2854a';   // washed out on Saturday
+        }
       }
       if (act === 'wave'){
         [...crabs].sort((a,b)=>a.t-b.t).forEach((cc,i)=>
@@ -1576,6 +1640,13 @@ if (new URLSearchParams(location.search).has('og')) document.body.classList.add(
   const card = document.createElement('div');
   card.id = 'promoCard';
   card.innerHTML = '<div><p class="line"></p><p class="sub2"></p></div>';
+  // Open on black and lift it — a title card costs the first three seconds, which on a
+  // muted autoplaying feed is the only budget there is.
+  const reveal = document.createElement('div');
+  reveal.id = 'promoReveal';
+  document.body.append(reveal);
+  setTimeout(() => reveal.classList.add('gone'), 260);
+
   const lower = document.createElement('div');
   lower.id = 'promoLower';
   lower.innerHTML = '<span></span>';
@@ -1586,9 +1657,23 @@ if (new URLSearchParams(location.search).has('og')) document.body.classList.add(
     card.querySelector('.sub2').textContent = sub || '';
     card.classList.toggle('on', !!line);
   };
+  // Typed out rather than faded in: at a glance in a feed a caption that appears all at
+  // once reads as a watermark, one that types reads as something happening.
+  let typer = 0;
   const showLower = t => {
-    lower.querySelector('span').textContent = t || '';
-    lower.classList.toggle('on', !!t);
+    clearInterval(typer);
+    const span = lower.querySelector('span');
+    if (!t) { lower.classList.remove('on'); span.textContent = ''; return; }
+    lower.classList.add('on');
+    let i = 0;
+    const cursor = '<b></b>';
+    span.innerHTML = cursor;
+    typer = setInterval(() => {
+      i++;
+      span.innerHTML = t.slice(0, i).replace(/[&<>]/g, c =>
+        ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c])) + cursor;
+      if (i >= t.length) clearInterval(typer);
+    }, 26);
   };
 
   // filled in per cut; window.CLAUDME_BEATS lets the capture script swap the script
