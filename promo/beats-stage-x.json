@@ -1,0 +1,20 @@
+[
+ {"t":0.8,"lower":"Every Claude Code session becomes a crab"},
+ {"t":4.2,"lower":"It hops when it needs your permission"},
+ {"t":5.6,"act":"need"},
+ {"t":9.0,"lower":"Confetti when a turn finishes"},
+ {"t":10.4,"act":"done"},
+ {"t":13.8,"lower":"A rate limit gets a warning"},
+ {"t":15.2,"act":"trouble"},
+ {"t":18.4,"lower":"They take beer breaks"},
+ {"t":19.8,"act":"beer"},
+ {"t":23.0,"lower":"…and clink glasses"},
+ {"t":24.4,"act":"clink"},
+ {"t":27.6,"lower":"Subagents bob along beside them"},
+ {"t":29.0,"act":"subs"},
+ {"t":32.2,"lower":"On a Friday, a deckchair"},
+ {"t":33.6,"act":"friday"},
+ {"t":37.4,"lower":"On a Monday, considerably less"},
+ {"t":38.8,"act":"monday"},
+ {"t":42.4,"lower":"","card":"Claudme","sub":"free · MIT · native Swift · ~3 MB\nmarekadvocate.github.io/claudme"}
+]

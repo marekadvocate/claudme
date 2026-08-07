@@ -29,8 +29,20 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     }
 
     private func setTitle(_ count: Int) {
-        // no emoji when the mark is already there; fall back to it if the icon is missing
-        item.button?.title = item.button?.image == nil ? "🦀 \(count)" : " \(count)"
+        // macOS truncates the menubar from the right when it fills up and gives the app no
+        // way to know it happened, so the only defence is to take less room — but dropping
+        // the count entirely takes away the one number worth glancing at. Keep it, and buy
+        // the space back by tightening the spacing and the font instead.
+        let n = NSAttributedString(string: "\(count)", attributes: [
+            .font: NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .semibold),
+        ])
+        if item.button?.image == nil {
+            item.button?.title = "🦀 \(count)"
+        } else {
+            item.button?.attributedTitle = n
+            item.button?.imageHugsTitle = true
+        }
+        item.button?.toolTip = "Claudme — \(count) session\(count == 1 ? "" : "s")"
     }
 
     // MARK: - Menu
@@ -95,6 +107,22 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         size.isEnabled = true
         size.submenu = sizeMenu
         menu.addItem(size)
+
+        // Tempo — what shipped before is the fastest of the three
+        let tempo = NSMenuItem(title: "Speed", action: nil, keyEquivalent: "")
+        let tempoMenu = NSMenu()
+        tempoMenu.autoenablesItems = false
+        for t in PetView.Tempo.allCases {
+            let ti = NSMenuItem(title: t.displayName, action: #selector(pickTempo(_:)), keyEquivalent: "")
+            ti.target = self
+            ti.representedObject = t.rawValue
+            ti.state = (PetView.tempo == t) ? .on : .off
+            ti.isEnabled = true
+            tempoMenu.addItem(ti)
+        }
+        tempo.isEnabled = true
+        tempo.submenu = tempoMenu
+        menu.addItem(tempo)
 
         // Playground: fire any effect on demand instead of waiting out its timer
         let play = NSMenuItem(title: "Playground", action: nil, keyEquivalent: "")
@@ -210,6 +238,12 @@ final class StatusItemController: NSObject, NSMenuDelegate {
 
     @objc private func toggleDockClicks() {
         PetManager.setClickableOnDock(!PetManager.clickableOnDock)
+    }
+
+    @objc private func pickTempo(_ sender: NSMenuItem) {
+        guard let raw = sender.representedObject as? String,
+              let t = PetView.Tempo(rawValue: raw) else { return }
+        PetView.setTempo(t)
     }
 
     @objc private func pickScale(_ sender: NSMenuItem) {

@@ -74,7 +74,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 self?.registry?.pollNow()
             }
         }
-        hookServer.start()
 
         offerHooksOnce()
 

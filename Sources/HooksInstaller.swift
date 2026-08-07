@@ -58,6 +58,9 @@ enum HooksInstaller {
             catch { throw HooksInstallerError.backupFailed }
         }
 
+        if settings["hooks"] != nil, !(settings["hooks"] is [String: Any]) {
+            throw HooksInstallerError.malformedSettings   // never overwrite a shape we can't read
+        }
         var hooks = settings["hooks"] as? [String: Any] ?? [:]
         for (event, value) in hooks {
             hooks[event] = strippingOurs(value) ?? value
@@ -65,7 +68,13 @@ enum HooksInstaller {
         for event in events {
             // Element-wise, and anything we don't recognise is carried through untouched —
             // a single odd entry must never take the user's other hooks with it.
-            var entries = (strippingOurs(hooks[event]) as? [Any]) ?? []
+            //
+            // If the value is not an array at all — a shape a hand-edited settings.json can
+            // easily have — `as? [Any] ?? []` used to throw it away and write ours in its
+            // place, silently, in a file we do not own. Leave it alone instead.
+            let existing = strippingOurs(hooks[event])
+            if existing != nil, !(existing is [Any]) { continue }
+            var entries = (existing as? [Any]) ?? []
             entries.append(["hooks": [["type": "command", "command": hookCommand, "timeout": 5]]])
             hooks[event] = entries
         }
@@ -148,6 +157,10 @@ enum HooksInstaller {
         // symlinked into a dotfiles repo into a plain file and orphan the real one. Resolve
         // the link first so we always write through to the actual target.
         let target = settingsURL.resolvingSymlinksInPath()
+        // On a machine where Claude Code has run but never written settings, ~/.claude may
+        // not exist yet and the atomic write fails with no useful error.
+        try? FileManager.default.createDirectory(at: target.deletingLastPathComponent(),
+                                                 withIntermediateDirectories: true)
         try data.write(to: target, options: .atomic)
         // an atomic write creates a fresh inode with default perms; this file can carry
         // tokens, so keep it owner-only

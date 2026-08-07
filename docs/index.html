@@ -552,6 +552,24 @@
   }
   @keyframes promoBlink{0%,49%{opacity:1}50%,100%{opacity:0}}
 
+  /* ================= ?stage : the film set =================
+     The demo is a simulation — crabs wander the perimeter, half of them are asleep, and
+     an action fired into it lands wherever they happen to be. That is right for the site
+     and useless for a film. The stage is the opposite: a fixed row facing the viewer,
+     nobody wandering, every beat performed by everyone at once, dead centre. */
+  body.stage .hero,body.stage .cta,body.stage .shuffle-hint,body.stage .deskcredit,
+  body.stage .track > section,body.stage .track > footer,
+  body.stage .menubar,body.stage .win,body.stage .dock{display:none!important}
+  body.stage .track > header{height:100dvh;padding:0}
+  body.stage .track > header > .wrap{padding:0;height:100%}
+  body.stage .track > header .stage{margin:0;width:100%;margin-left:0;transform:none}
+  body.stage .track > header .screen{
+    height:100dvh;min-height:0;
+    background:radial-gradient(90% 70% at 50% 42%, #1b1512 0%, #0c0a09 60%, #060505 100%)
+  }
+  body.stage .tag{font-weight:700;font-size:13px;padding:4px 9px}
+  body.stage .bub{font-size:15px;padding:7px 12px;border-radius:7px}
+
   /* ==== THEME:START ==== After Hours — The family works at night: a near-black desk lit by one warm lamp overhead, charcoal windows set in bone-warm type, and the crab's terracotta as the only colour in the room. */
   :root{
     --desk:#0a0908; --desk2:#050404;
@@ -1011,6 +1029,22 @@ open build/Claudme.app</pre>
   }
   NAMES.forEach(([n,i],k) => crabs.push(makeCrab(n,i,k*0.19)));
 
+  // On the stage every crab gets a fixed mark: an even row across the lower third,
+  // re-measured on resize so the capture size does not matter.
+  function setMarks(){
+    if (!window.__stageMode) return;
+    const r = screen.getBoundingClientRect();
+    const gap = r.width / (crabs.length + 1);
+    crabs.forEach((c, i) => {
+      c.mark = { x: gap * (i + 1), y: r.height * 0.62 };
+      c.state = 'idle';
+      c.dance = false;
+    });
+  }
+  setMarks();
+  addEventListener('resize', setMarks);
+  setTimeout(setMarks, 400);
+
   function say(c, text, ms=2200){
     c.bub.textContent = text; c.bub.classList.add('on');
     clearTimeout(c._bt);
@@ -1018,7 +1052,53 @@ open build/Claudme.app</pre>
   }
 
   // perimeter of the simulated screen: bottom -> right -> top -> left
+  /// The striped deckchair, drawn in code like everything else.
+  function buildChair(c){
+      const ch = document.createElement('canvas');
+      ch.className = 'crab';
+      ch.width = 13 * PX; ch.height = 8 * PX;
+      ch.style.zIndex = 1;
+      screen.appendChild(ch);
+      const g = ch.getContext('2d');
+      const cell = (col,row,col2) => { g.fillStyle = col2; g.fillRect(col*PX,row*PX,PX,PX); };
+      for (const [x,y] of [[0,2],[1,2],[1,3],[2,3],[2,4],[3,4],[4,5],[5,5],[6,5],[7,5],[8,5],[9,5],[10,5]])
+        cell(x,y,c.chair);
+      for (const [x,y] of [[1,2],[3,4],[6,5],[9,5]]) cell(x,y,'#faeedd');
+      for (const [x,y] of [[1,4],[2,5],[3,6],[4,6],[10,6],[10,7],[4,7]]) cell(x,y,'#5f4633');
+      c.chairEl = ch;
+  }
+
   function place(c, rect){
+    // On the stage a crab keeps the mark it was given: no perimeter, no wandering, no
+    // rotation. Everything below still runs, so hops, dances and props behave normally.
+    if (window.__stageMode && c.mark !== undefined){
+      const b = c.dance ? c.beat : 0;
+      const bob  = c.dance ? Math.abs(Math.sin(b)) * 7 * MOT : 0;
+      const sway = c.dance ? Math.sin(b * 0.5) * 5 * MOT : 0;
+      const tilt = c.dance ? Math.sin(b * 0.5) * 7 : 0;
+      const hop  = c.hop ? Math.sin(c.hop*Math.PI) * 11 * MOT : 0;
+      const moody = c.mood && performance.now() < (c.moodUntil || 0);
+      if (!moody && c.mood){ c.mood = null; if (c.chairEl){ c.chairEl.remove(); c.chairEl = null; } }
+      const lean = moody && c.mood !== 'monday' ? -19 : 0;
+      const nod  = moody && c.mood === 'monday' ? Math.sin(performance.now()/220) * 7 : 0;
+
+      const bx = c.mark.x + sway, by = c.mark.y - hop - bob;
+      const spin = c.spin > 0 ? c.spin * 360 : 0;
+      c.el.style.transform =
+        `translate(${bx - W/2}px, ${by - H/2}px) rotate(${tilt + lean + nod + spin}deg)`;
+      c.tag.style.left = bx + 'px';
+      c.tag.style.top  = (by + H/2 + 10) + 'px';
+      c.bub.style.left = bx + 'px';
+      c.bub.style.top  = (by - H/2 - 40) + 'px';
+
+      if (moody && c.mood !== 'monday'){
+        if (!c.chairEl) buildChair(c);
+        c.chairEl.style.transform =
+          `translate(${bx - (13*PX)/2}px, ${by - H/2 + H*0.30}px)`;
+      } else if (c.chairEl){ c.chairEl.remove(); c.chairEl = null; }
+      return;
+    }
+
     const w = rect.width, h = rect.height, P = 2*(w+h);
     let v = ((c.t % 1) + 1) % 1 * P, x, y, seg;
     if (v < w){ x = v; y = h; seg = 0; }
@@ -1047,24 +1127,13 @@ open build/Claudme.app</pre>
     const bx = x + off[0] + hx, by = y + off[1] + hy;   // body centre in screen space
     const lean = moody && c.mood !== 'monday' ? -19 : 0;
     const nod  = moody && c.mood === 'monday' ? Math.sin(performance.now()/220) * 7 : 0;
+    // c.spin was set and decremented but never read, so the Spin action did nothing at all
+    const spin = c.spin > 0 ? c.spin * 360 : 0;
     c.el.style.transform =
-      `translate(${bx - W/2}px, ${by - H/2}px) rotate(${rot + tilt + lean + nod}deg)`;
+      `translate(${bx - W/2}px, ${by - H/2}px) rotate(${rot + tilt + lean + nod + spin}deg)`;
 
     if (moody && c.mood !== 'monday'){
-      if (!c.chairEl){
-        const ch = document.createElement('canvas');
-        ch.className = 'crab';
-        ch.width = 13 * PX; ch.height = 8 * PX;
-        ch.style.zIndex = 1;
-        screen.appendChild(ch);
-        const g = ch.getContext('2d');
-        const cell = (col,row,col2) => { g.fillStyle = col2; g.fillRect(col*PX,row*PX,PX,PX); };
-        for (const [x,y] of [[0,2],[1,2],[1,3],[2,3],[2,4],[3,4],[4,5],[5,5],[6,5],[7,5],[8,5],[9,5],[10,5]])
-          cell(x,y,c.chair);
-        for (const [x,y] of [[1,2],[3,4],[6,5],[9,5]]) cell(x,y,'#faeedd');
-        for (const [x,y] of [[1,4],[2,5],[3,6],[4,6],[10,6],[10,7],[4,7]]) cell(x,y,'#5f4633');
-        c.chairEl = ch;
-      }
+      if (!c.chairEl) buildChair(c);
       c.chairEl.style.transform =
         `translate(${bx - (13*PX)/2}px, ${by - H/2 + H*0.30}px) rotate(${rot}deg)`;
     } else if (c.chairEl){ c.chairEl.remove(); c.chairEl = null; }
@@ -1235,7 +1304,7 @@ open build/Claudme.app</pre>
     ['done','Finished 🎉'], ['need','Needs you ✋'], ['trouble','Rate limit ⚠️'],
     ['beer','Beer 🍺'], ['clink','Clink 🍻'], ['subs','Subagents 👶'],
     ['spin','Spin 🌀'], ['rope','Rope 🪢'], ['rocket','Rocket 🚀'],
-    ['compact','Compact 🗜️'], ['wave','Wave 🌊'],
+    ['spin','Spin 🌀'], ['compact','Compact 🗜️'], ['wave','Wave 🌊'],
     ['friday','Friday 🌴'], ['saturday','Saturday 🥴'], ['monday','Monday 😒'],
   ];
   let lastAct = -1;
@@ -1283,7 +1352,7 @@ open build/Claudme.app</pre>
         if (other){ other.state='beer'; other.until=now+3200; say(other,'🍻',3200); }
       }
       if (act === 'spin'){
-        c.until = now+1300; c.spin = 1;
+        c.until = now+1300; c.spin = 1; c.hop = 1;
       }
       if (act === 'compact'){ say(c,'🗜️',2000); setTimeout(()=>say(c,'grg 😮‍💨',2000), 2100); }
       if (act === 'rope' || act === 'rocket'){
@@ -1728,6 +1797,16 @@ if (new URLSearchParams(location.search).has('og')) document.body.classList.add(
       if (b.act && typeof window.claudmeActAll === 'function') window.claudmeActAll(b.act);
     }, b.t * 1000);
   }
+})();
+
+/* ---------- ?stage : a film set rather than a simulation ----------
+   Lines the family up facing the viewer and stops them wandering, so a beat can be
+   performed by everyone at once in the middle of frame. Only the capture uses this. */
+(function stage(){
+  if (!new URLSearchParams(location.search).has('stage')) return;
+  document.body.classList.add('promo', 'stage');
+  window.__promoMode = true;
+  window.__stageMode = true;
 })();
 
 </script>

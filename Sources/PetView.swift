@@ -65,7 +65,18 @@ struct RoamArea: Equatable {
 final class PetView: NSView {
     static let claudeOrange = NSColor(srgbRed: 217/255, green: 119/255, blue: 87/255, alpha: 1)
     static let inkColor = NSColor(srgbRed: 30/255, green: 30/255, blue: 28/255, alpha: 1)
-    static let viewSize = NSSize(width: 150, height: 170)
+    /// AppKit only hit-tests points inside the view's own frame, so the frame has to grow
+    /// with the crab or the outer part of a scaled-up one is simply not clickable.
+    static var viewSize: NSSize {
+        let s = max(1, userScale)
+        return NSSize(width: 150 * s, height: 170 * s)
+    }
+
+    /// Where the body sits inside the view. Not the centre: it is low, so a speech bubble
+    /// has room above it. Kept proportional so scaling the view does not move the crab.
+    static func bodyAnchor(in size: NSSize) -> CGPoint {
+        CGPoint(x: size.width * 0.5, y: size.height * (60.0 / 170.0))
+    }
 
     // pixel grid: 11 × 6, pixel size 7 → content 77 × 42 centered in an 80×80 body box
     static let px: CGFloat = 7
@@ -250,7 +261,7 @@ final class PetView: NSView {
         let scaleFactor = NSScreen.main?.backingScaleFactor ?? 2
 
         body.bounds = CGRect(x: 0, y: 0, width: 80, height: 80)
-        body.position = CGPoint(x: 75, y: 60)
+        body.position = Self.bodyAnchor(in: bounds.size)
         body.shadowColor = NSColor.black.cgColor
         body.shadowOpacity = 0.14
         body.shadowRadius = 3
@@ -973,7 +984,7 @@ final class PetView: NSView {
         let delta = Self.shortestDelta(from: other.perimeterPosition, to: perimT, length: perimeterLength)
         slideDir = delta >= 0 ? 1 : -1
         if slideRemaining < 50 { slideRemaining = 50 }
-        speed = max(speed, 36)
+        speed = max(speed, 36 * Self.tempo.factor)
     }
 
     // MARK: - Traversals: crossing the screen instead of going round it
@@ -995,7 +1006,51 @@ final class PetView: NSView {
     }
 
     /// Re-applies the current scale without changing state — used when the preference moves.
-    func refreshScale() { setBodyScale(Self.scale(for: state), animated: true) }
+    func refreshScale() {
+        // resize about the centre so the crab does not jump when the preference changes
+        let c = CGPoint(x: frame.midX, y: frame.midY)
+        setFrameSize(Self.viewSize)
+        setFrameOrigin(CGPoint(x: c.x - frame.width / 2, y: c.y - frame.height / 2))
+        body.position = Self.bodyAnchor(in: bounds.size)
+        setBodyScale(Self.scale(for: state), animated: true)
+        window?.invalidateCursorRects(for: self)
+        applyPerimeterPosition()
+    }
+
+    /// How fast the family moves. What shipped until now is `wired` — several people said
+    /// the crabs looked like they were on something, so that is exactly what it is called,
+    /// and the default is calmer.
+    enum Tempo: String, CaseIterable {
+        case slow, normal, wired
+
+        var factor: CGFloat {
+            switch self {
+            case .slow:   return 0.45
+            case .normal: return 0.7
+            case .wired:  return 1.0
+            }
+        }
+
+        var displayName: String {
+            switch self {
+            case .slow:   return "Slow motion"
+            case .normal: return "Normal"
+            case .wired:  return "On something"
+            }
+        }
+    }
+
+    static var tempo: Tempo = {
+        Tempo(rawValue: UserDefaults.standard.string(forKey: "ClaudmeTempo") ?? "") ?? .normal
+    }()
+
+    static func setTempo(_ t: Tempo) {
+        tempo = t
+        UserDefaults.standard.set(t.rawValue, forKey: "ClaudmeTempo")
+    }
+
+    /// Animations the dance must not touch — they belong to the day moods.
+    static let moodAnimationKeys: Set<String> = ["recline", "queasy", "monday"]
 
     private enum Traversal { case rope, rocket }
 
@@ -1221,9 +1276,22 @@ final class PetView: NSView {
         pop.duration = pop.settlingDuration
         group.add(pop, forKey: "pop")
 
-        // up, hover, back down — in body-local coords, so wall crabs float away from the wall
-        let float = CAKeyframeAnimation(keyPath: "transform.translation.y")
-        float.values = [0, 42, 42, 0]
+        // Away from whichever edge the crab is standing on, not simply up.
+        //
+        // The comment here used to claim this was body-local, but an animation on
+        // transform.translation.y sets the translation component of the layer's transform,
+        // which lives in the PARENT's space — so it was screen-absolute and a crab on the
+        // ceiling floated INTO the menu bar while one on the right wall drifted sideways
+        // along it. Pick the axis and the sign from the edge instead.
+        let up: (String, CGFloat)
+        switch currentSegment {
+        case 2:  up = ("transform.translation.y", -42)   // ceiling: down is away
+        case 1:  up = ("transform.translation.x", -42)   // right wall: left is away
+        case 3:  up = ("transform.translation.x",  42)   // left wall: right is away
+        default: up = ("transform.translation.y",  42)   // floor: up is away
+        }
+        let float = CAKeyframeAnimation(keyPath: up.0)
+        float.values = [0, up.1, up.1, 0]
         float.keyTimes = [0, 0.3, 0.72, 1]
         float.duration = 4.4
         body.add(float, forKey: "trickFloat")
@@ -1512,7 +1580,7 @@ final class PetView: NSView {
             slideRemaining = state == .working ? CGFloat.random(in: 260...700)
                                                : CGFloat.random(in: 80...260)
             let base = state == .working ? CGFloat.random(in: 90...130) : CGFloat.random(in: 24...40)
-            speed = base * (1 + CGFloat(wiredness()) * 0.22)   // wired crabs scuttle faster
+            speed = base * (1 + CGFloat(wiredness()) * 0.22) * Self.tempo.factor
         } else {
             nextDecisionAt = now + Double.random(in: 2...7)
         }
@@ -1555,6 +1623,18 @@ final class PetView: NSView {
         sleepBed = next
         bubble.show(Quips.random(.grumble), for: 2.6)
         smallHop()
+        // Persistent bubbles (sleeping, waiting) have no timer of their own, so showing a
+        // timed one over the top used to end with the crab silent in a state that is
+        // supposed to be labelled. Put it back when the grumble expires.
+        let restore = state
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.8) { [weak self] in
+            guard let self, self.state == restore else { return }
+            switch restore {
+            case .sleeping: self.bubble.show(Quips.random(.sleeping), for: nil)
+            case .waiting:  self.bubble.show(Quips.random(.waiting), for: nil)
+            default: break
+            }
+        }
     }
 
     // MARK: - Perimeter geometry
@@ -1617,6 +1697,25 @@ final class PetView: NSView {
             let bubbleY: CGFloat = seg == 2 ? 22 : (seg == 0 ? 122 : 90)
             bubble.setFrameOrigin(NSPoint(x: bubble.frame.origin.x, y: bubbleY))
             positionPill()
+            clampSpeechToScreen()
+        }
+    }
+
+    /// Keeps the speech bubble inside the screen.
+    ///
+    /// It is centred on the crab, which is right on the floor and the ceiling and wrong on
+    /// the side walls: there the crab is hard against the edge and half of every line it
+    /// said ran off the display. The name pill already clamps itself in positionPill();
+    /// the bubble never did.
+    private func clampSpeechToScreen() {
+        guard let sv = superview else { return }
+        let w = bubble.frame.width
+        guard sv.bounds.width > w + 8 else { return }
+        let lowest  = -frame.origin.x + 4
+        let highest = sv.bounds.width - frame.origin.x - w - 4
+        let x = min(max(bubble.frame.origin.x, lowest), highest)
+        if abs(x - bubble.frame.origin.x) > 0.5 {
+            bubble.setFrameOrigin(NSPoint(x: x, y: bubble.frame.origin.y))
         }
     }
 
@@ -1881,7 +1980,12 @@ final class PetView: NSView {
             return a
         }
 
-        rig.removeAllAnimations()
+        // Not removeAllAnimations(): the rig also carries the day-mood recline, the queasy
+        // sway and the Monday head-shake, and wiping them mid-pose snaps the crab upright
+        // and out of its deckchair.
+        for key in rig.animationKeys() ?? [] where !Self.moodAnimationKeys.contains(key) {
+            rig.removeAnimation(forKey: key)
+        }
         cap.removeAllAnimations()
 
         switch danceMove {
@@ -1926,11 +2030,18 @@ final class PetView: NSView {
 
     private var babyLayers: [String: CALayer] = [:]
     private var babyAddedAt: [String: CFTimeInterval] = [:]
+    /// which slot each child occupies, so freeing one frees exactly that spot
+    private var babySlot: [String: CGFloat] = [:]
     private static let babySlots: [CGFloat] = [-56, 56, -94, 94, -132, 132, -170, 170]
 
     func addBaby(agentId: String) {
         guard babyLayers[agentId] == nil, babyLayers.count < Self.babySlots.count else { return }
-        let slot = Self.babySlots[babyLayers.count]
+        // Allocate the first free slot rather than indexing by the live count: subagents
+        // rarely stop in the order they started, and count-indexing put the next child on
+        // top of one that was already standing there.
+        let taken = Set(babySlot.values)
+        guard let slot = Self.babySlots.first(where: { !taken.contains($0) }) else { return }
+        babySlot[agentId] = slot
         let baby = Self.makeBaby(capColor: cap.fillColor, era: era)   // kids wear the family hat
         baby.position = CGPoint(x: 40 + slot, y: 31)   // feet on the parent's leg line
         body.addSublayer(baby)
@@ -1948,6 +2059,7 @@ final class PetView: NSView {
     func removeBaby(agentId: String) {
         guard let baby = babyLayers.removeValue(forKey: agentId) else { return }
         babyAddedAt.removeValue(forKey: agentId)
+        babySlot.removeValue(forKey: agentId)
         CATransaction.begin()
         CATransaction.setCompletionBlock { baby.removeFromSuperlayer() }
         let out = CABasicAnimation(keyPath: "transform.scale")
@@ -2034,7 +2146,11 @@ final class PetView: NSView {
     private func blinkOnce() {
         for eye in [eyeLeft, eyeRight] {
             let blink = CABasicAnimation(keyPath: "transform.scale.y")
-            blink.fromValue = 1
+            // Read the eye's current size rather than assuming 1: a squinting eye (beer,
+            // deckchair) or a dilated one (xhigh effort) popped to full size for a frame on
+            // every blink.
+            blink.fromValue = (eye.presentation() ?? eye)
+                .value(forKeyPath: "transform.scale.y") ?? 1
             blink.toValue = 0.15
             blink.duration = 0.07
             blink.autoreverses = true
@@ -2058,7 +2174,18 @@ final class PetView: NSView {
     // MARK: - Click interaction: jump to the session's terminal
 
     /// clickable area around the crab's body (local coords)
-    var bodyHitRect: NSRect { NSRect(x: 25, y: 18, width: 100, height: 84) }
+    /// The clickable body, scaled with whatever the crab is currently drawn at.
+    ///
+    /// This was a fixed 100x84 box, which was fine while every crab was the same size. It
+    /// stopped being fine the moment the size became a preference: at 300% you would click
+    /// the crab you can see and miss, and at 50% you would hit it from empty space. Clamped
+    /// to the view so it can never claim area the crab does not occupy.
+    var bodyHitRect: NSRect {
+        let s = max(0.3, currentScale)
+        let w = 100 * s, h = 84 * s
+        let a = Self.bodyAnchor(in: bounds.size)
+        return NSRect(x: a.x - w / 2, y: a.y - h / 2, width: w, height: h).intersection(bounds)
+    }
 
     override func hitTest(_ point: NSPoint) -> NSView? {
         let p = convert(point, from: superview)

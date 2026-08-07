@@ -159,9 +159,15 @@ final class PetManager {
     private(set) var capColors: [String: NSColor] = [:]
 
     private func assignCapColors(_ sessions: [SessionInfo]) {
-        var used = Set<Int>()
-        var colors: [String: NSColor] = [:]
-        for s in sessions.sorted(by: { $0.name < $1.name }) {
+        // The colour is an identity: "the blue one is the billing session". Re-deriving the
+        // whole map every sync broke that — a session starting or ending elsewhere shifted
+        // the collision probing and silently recoloured crabs that had nothing to do with
+        // it. Sessions that already have a colour keep it; only new ones are assigned.
+        var colors = capColors.filter { id, _ in sessions.contains { $0.sessionId == id } }
+        var used = Set(colors.values.compactMap { PetView.capPalette.firstIndex(of: $0) })
+
+        for s in sessions.sorted(by: { $0.sessionId < $1.sessionId })
+        where colors[s.sessionId] == nil {
             var idx = PetView.capIndex(for: s.name)
             var probe = 0
             while used.contains(idx) && probe < PetView.capPalette.count {
@@ -280,7 +286,16 @@ final class PetManager {
     private var tickCount = 0
 
     private func tick() {
-        guard !pets.isEmpty else { return }     // nothing to animate, don't burn the CPU
+        guard !pets.isEmpty else {
+            // The only code that ever puts ignoresMouseEvents back is below this guard, so
+            // losing the last pet while one was hovered used to leave the overlay claiming
+            // every click on that display — with nothing to recover it until a new session
+            // spawned. Release the mouse on the way out.
+            if overlays.contains(where: { !$0.window.ignoresMouseEvents }) {
+                for overlay in overlays { overlay.window.ignoresMouseEvents = true }
+            }
+            return
+        }     // nothing to animate, don't burn the CPU
         let now = CACurrentMediaTime()
         for pet in pets.values {
             pet.tick(now: now)
@@ -461,6 +476,11 @@ final class PetManager {
             if let pet = pets.removeValue(forKey: event.sessionId) {
                 petOverlay.removeValue(forKey: event.sessionId)
                 despawn(pet)
+                // the menubar reads lastSessions, so leaving it behind listed a made man
+                // who had already left the building
+                lastSessions.removeAll { $0.sessionId == event.sessionId }
+                capColors.removeValue(forKey: event.sessionId)
+                madeNames.removeValue(forKey: event.sessionId)
                 onCountChanged?(pets.count)
             }
         case "Notification":

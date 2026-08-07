@@ -70,6 +70,16 @@ final class SessionRegistry {
         let pid = (obj["pid"] as? NSNumber)?.int32Value ?? pidFromName
         guard Self.alive(pid) else { return nil }
 
+        // kill(pid, 0) only says "some process has this id". PIDs get recycled, so a stale
+        // session file whose number has been handed to an unrelated process would keep
+        // resurrecting a crab for a session that ended days ago. A live session rewrites
+        // its file constantly; treat a long-untouched one as gone.
+        let updated = (obj["updatedAt"] as? NSNumber)?.doubleValue ?? 0
+        if updated > 0 {
+            let ageSeconds = Date().timeIntervalSince1970 - updated / 1000
+            guard ageSeconds < 48 * 3600 else { return nil }
+        }
+
         let cwd = obj["cwd"] as? String ?? ""
         let fallbackName = cwd.isEmpty ? "claude-\(pid)" : URL(fileURLWithPath: cwd).lastPathComponent
         let name = (obj["name"] as? String).flatMap { $0.isEmpty ? nil : $0 } ?? fallbackName
@@ -94,7 +104,10 @@ final class SessionRegistry {
 
     private func transcriptModel(cwd: String, sessionId: String) -> String? {
         guard !cwd.isEmpty else { return nil }
-        let munged = cwd.replacingOccurrences(of: "/", with: "-")
+        // Claude Code replaces every character outside [A-Za-z0-9] with "-", not just the
+        // separators, so a project directory containing a dot or a space had no transcript
+        // path at all and silently lost its model detection.
+        let munged = String(cwd.map { $0.isLetter || $0.isNumber ? $0 : "-" })
         let url = FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent(".claude/projects/\(munged)/\(sessionId).jsonl")
         guard let attrs = try? FileManager.default.attributesOfItem(atPath: url.path),

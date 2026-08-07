@@ -27,6 +27,7 @@ final class HookServer {
     private let queue = DispatchQueue(label: "claudme.hooks")
 
     func start() {
+        guard listener == nil else { return }      // never bind twice
         startListener(fixed: true)
     }
 
@@ -40,13 +41,16 @@ final class HookServer {
             NSLog("Claudme: cannot create listener")
             return
         }
+        listener?.cancel()                         // never leak the previous one
         listener = l
         l.newConnectionHandler = { [weak self] conn in self?.handle(conn) }
-        l.stateUpdateHandler = { [weak self] state in
+        l.stateUpdateHandler = { [weak self, weak l] state in
             guard let self else { return }
             switch state {
             case .ready:
-                if let p = self.listener?.port?.rawValue {
+                // read this listener's own port: self.listener may already point elsewhere,
+                // and an unresolved .any port reports 0, which would be written to the file
+                if let p = l?.port?.rawValue, p != 0 {
                     Self.writePortFile(p)
                     NSLog("Claudme: hook server on 127.0.0.1:\(p)")
                 }

@@ -1,0 +1,13 @@
+[
+ {"t":0.6,"lower":"1. hops for permission"},
+ {"t":1.8,"act":"need"},
+ {"t":5.0,"lower":"2. confetti when done"},
+ {"t":6.2,"act":"done"},
+ {"t":9.4,"lower":"3. beer break"},
+ {"t":10.6,"act":"beer"},
+ {"t":13.0,"lower":"4. clinks glasses"},
+ {"t":14.2,"act":"clink"},
+ {"t":17.4,"lower":"5. deckchair on a Friday"},
+ {"t":18.6,"act":"friday"},
+ {"t":22.4,"lower":"","card":"Claudme","sub":"free · open source · mac\nlink in bio"}
+]
