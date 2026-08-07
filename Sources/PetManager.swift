@@ -288,6 +288,7 @@ final class PetManager {
         updateMouseInteractivity()
         tickCount += 1
         if tickCount % 45 == 0 { checkGreetings(now: now) }
+        if tickCount % 6 == 0 { clearTheDock() }
         if tickCount % 20 == 0 { checkSeparation() }
         if tickCount % 60 == 0 { layoutOverlays() }   // catch Dock / resolution changes
     }
@@ -323,6 +324,13 @@ final class PetManager {
         for (idx, overlay) in overlays.enumerated() {
             let f = overlay.window.frame
             guard f.contains(mouse) else { continue }
+            // The overlay sits a level above the Dock so the crabs walk in front of it,
+            // which means a crab parked on an icon would otherwise swallow the click that
+            // was meant for the icon. Inside the Dock's band we never take the mouse.
+            if let screen = overlay.window.screen {
+                let dockDepth = screen.visibleFrame.minY - screen.frame.minY
+                if dockDepth > 4, mouse.y < screen.frame.minY + dockDepth { continue }
+            }
             let local = NSPoint(x: mouse.x - f.origin.x, y: mouse.y - f.origin.y)
             for pet in overlay.view.subviews.compactMap({ $0 as? PetView }) {
                 let r = pet.bodyHitRect.offsetBy(dx: pet.frame.origin.x, dy: pet.frame.origin.y)
@@ -463,6 +471,31 @@ final class PetManager {
     // MARK: - Ambient social behaviour
 
     private var greetCooldown: [String: CFTimeInterval] = [:]
+
+    /// A crab standing on the Dock is in the way of something you actually want to click.
+    /// When the cursor comes down into the Dock's band, anyone loitering there scurries
+    /// sideways — they keep to the same edge, they just get out of the doorway.
+    /// Re-applies the crab scale to everyone, after the menubar preference changes.
+    func refreshScales() {
+        for pet in pets.values { pet.refreshScale() }
+    }
+
+    private func clearTheDock() {
+        let mouse = NSEvent.mouseLocation
+        for overlay in overlays {
+            guard let screen = overlay.window.screen else { continue }
+            let dockDepth = screen.visibleFrame.minY - screen.frame.minY
+            guard dockDepth > 4 else { continue }                    // Dock is hidden or not at the bottom
+            let band = screen.frame.minY + dockDepth + 30
+            guard mouse.y < band, screen.frame.contains(mouse) else { continue }
+
+            for pet in overlay.view.subviews.compactMap({ $0 as? PetView }) where pet.onFloor {
+                let petX = overlay.window.frame.origin.x + pet.frame.midX
+                guard abs(petX - mouse.x) < 130 else { continue }
+                pet.scurry(away: petX < mouse.x ? -1 : 1)
+            }
+        }
+    }
 
     private func checkGreetings(now: CFTimeInterval) {
         for (_, list) in petsByOverlay() where list.count > 1 {

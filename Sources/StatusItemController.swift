@@ -80,6 +80,22 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         lang.submenu = langMenu
         menu.addItem(lang)
 
+        // Crab size, as a percentage — on top of the per-state and per-model scales
+        let size = NSMenuItem(title: "Crab size", action: nil, keyEquivalent: "")
+        let sizeMenu = NSMenu()
+        sizeMenu.autoenablesItems = false
+        for pct in [50, 75, 100, 125, 150, 200, 300] {
+            let si = NSMenuItem(title: "\(pct)%", action: #selector(pickScale(_:)), keyEquivalent: "")
+            si.target = self
+            si.representedObject = pct
+            si.state = Int((PetView.userScale * 100).rounded()) == pct ? .on : .off
+            si.isEnabled = true
+            sizeMenu.addItem(si)
+        }
+        size.isEnabled = true
+        size.submenu = sizeMenu
+        menu.addItem(size)
+
         // Playground: fire any effect on demand instead of waiting out its timer
         let play = NSMenuItem(title: "Playground", action: nil, keyEquivalent: "")
         let playMenu = NSMenu()
@@ -181,6 +197,12 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     @objc private func pickLanguage(_ sender: NSMenuItem) {
         guard let raw = sender.representedObject as? String, let l = Lang(rawValue: raw) else { return }
         Quips.setLanguage(l)
+    }
+
+    @objc private func pickScale(_ sender: NSMenuItem) {
+        guard let pct = sender.representedObject as? Int else { return }
+        PetView.setUserScale(CGFloat(pct) / 100)
+        manager.refreshScales()
     }
 
     @objc private func pickRegister(_ sender: NSMenuItem) {

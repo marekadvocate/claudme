@@ -818,7 +818,9 @@ final class PetView: NSView {
 
     private func setBodyScale(_ s: CGFloat, animated: Bool) {
         let from = (body.presentation() ?? body).value(forKeyPath: "transform.scale.x")
-        currentScale = s * modelKind.sizeFactor   // bigger model → bigger crab
+        // three multipliers, deliberately separate: the state (idle crabs are smaller),
+        // the model (a bigger model is a bigger crab) and the user's own preference.
+        currentScale = s * modelKind.sizeFactor * PetView.userScale
         updateBodyTransform(animated: animated, keyPath: "transform.scale", from: from)
     }
 
@@ -968,6 +970,21 @@ final class PetView: NSView {
     // for a few seconds and drives the frame directly, then drops the crab back onto the
     // ring at wherever it landed.
 
+    /// How big the family is, as a fraction. Chosen in the menubar, applied on top of the
+    /// per-state and per-model scales so both keep working.
+    static var userScale: CGFloat = {
+        let v = UserDefaults.standard.double(forKey: "ClaudmeCrabScale")
+        return v > 0 ? CGFloat(v) : 1.0
+    }()
+
+    static func setUserScale(_ v: CGFloat) {
+        userScale = v
+        UserDefaults.standard.set(Double(v), forKey: "ClaudmeCrabScale")
+    }
+
+    /// Re-applies the current scale without changing state — used when the preference moves.
+    func refreshScale() { setBodyScale(Self.scale(for: state), animated: true) }
+
     private enum Traversal { case rope, rocket }
 
     /// What the day of the week does to a made man.
@@ -995,6 +1012,17 @@ final class PetView: NSView {
 
     var isTraversing: Bool { traversal != nil }
     var onCeiling: Bool { currentSegment == 2 }
+    var onFloor: Bool { currentSegment == 0 }
+
+    /// Get out of the way. Used when the cursor drops into the Dock's band and a crab is
+    /// standing on top of an icon someone is trying to click. It stays on its edge — this
+    /// is a shuffle sideways, not a panic.
+    func scurry(away dir: CGFloat) {
+        guard traversal == nil, beerMug == nil, loungerLayer == nil else { return }
+        slideDir = dir >= 0 ? 1 : -1
+        slideRemaining = max(slideRemaining, 150)
+        crawl(by: 190.0 / 30.0)                    // roughly three times a normal step
+    }
     var onSideWall: Bool { currentSegment == 1 || currentSegment == 3 }
 
     /// Rappel from the ceiling straight down to the floor.

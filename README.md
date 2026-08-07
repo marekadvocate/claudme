@@ -86,6 +86,12 @@ folder. Nothing else is left behind.
 **Click a crab** — the terminal running that session comes to the front.
 **Right-click** — its working directory, era and status.
 
+**The Dock is yours.** The overlay sits a level above the Dock so the crabs walk in front of
+it, which would otherwise mean a crab parked on an icon swallows the click meant for it. So
+inside the Dock's band Claudme never takes the mouse at all, and any crab loitering there
+scurries sideways out of the way as your cursor comes down. Everywhere else they stay
+clickable.
+
 ## The family
 
 Every session is a made man with a stable name: the same session always produces the same crab.
@@ -155,6 +161,7 @@ throughout: the music changes how they move, never what they're doing. Switch it
 |---|---|
 | **The family** | one row per session: rank, colour, status. Click a row to show its terminal |
 | **Language** | nineteen of them, plus the Clean / Street talk switch |
+| **Crab size** | 50% to 300%, on top of the per-state and per-model scales |
 | **Playground** | fire any of the fifteen effects on demand instead of waiting out its timer |
 | **Party mode** | whether music makes them dance. On by default |
 | **3D crabs** | render the family as isometric voxels, like the app icon |
