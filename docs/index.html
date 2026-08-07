@@ -885,8 +885,12 @@ open build/Claudme.app</pre>
   // at that size they crowd the demo. So the raster is tripled only for the promo and
   // share-card captures, and the site keeps the size it always had.
   const BIG = /[?&](promo|og)=/.test(location.search);
+  // Motion amplitudes below are all in pixels and were tuned against a 4.5px raster. At
+  // the capture size a 9px hop is a twitch, which is why the film looked static. Scale
+  // them with the crab instead of hard-coding them.
   const PX = BIG ? (innerWidth < 640 ? 6 : innerWidth < 900 ? 10 : 13)
                  : (innerWidth < 640 ? 3 : innerWidth < 900 ? 3.5 : 4.5);
+  const MOT = PX / 4.5;                       // motion scale, 1 on the site
   const GRID_W = 11;
   const CRAB = '#d97757', INK = '#1e1e1c';
   const CAPS = ['#1f3b8a','#0d9488','#f9cc15','#7c3aed','#17a34a','#ec4899','#0ea5e9','#dc2626'];
@@ -1028,13 +1032,13 @@ open build/Claudme.app</pre>
     const rot = [0, -90, 180, 90][seg];
     // nudge the body so its feet touch the edge, whatever the rotation
     const off = [[0,-H/2],[ -H/2,0],[0,H/2],[H/2,0]][seg];
-    const hop = c.hop ? Math.sin(c.hop*Math.PI)*9 : 0;
+    const hop = c.hop ? Math.sin(c.hop*Math.PI)*9*MOT : 0;
     // a deckchair is drawn under the crab and the body leans back into it
     const moody = c.mood && performance.now() < (c.moodUntil || 0);
     if (!moody && c.mood){ c.mood = null; if (c.chairEl){ c.chairEl.remove(); c.chairEl = null; } }
     const b = c.dance ? c.beat : 0;
-    const bob  = c.dance ? Math.abs(Math.sin(b)) * 7 : 0;   // away from the edge
-    const sway = c.dance ? Math.sin(b * 0.5) * 5 : 0;       // along it
+    const bob  = c.dance ? Math.abs(Math.sin(b)) * 7 * MOT : 0;   // away from the edge
+    const sway = c.dance ? Math.sin(b * 0.5) * 5 * MOT : 0;       // along it
     const tilt = c.dance ? Math.sin(b * 0.5) * 7 : 0;
     const lift = hop + bob;
     const hx = seg===1 ? -lift : seg===3 ? lift : sway;
@@ -1140,9 +1144,10 @@ open build/Claudme.app</pre>
     for (let i=0;i<26;i++){
       const p = document.createElement('div');
       const col = [CRAB,'#e8b04b','#0ea5e9','#ec4899','#fff'][i%5];
-      p.style.cssText = `position:absolute;width:5px;height:5px;background:${col};left:${ox}px;top:${oy}px;pointer-events:none;border-radius:1px`;
+      const cs = Math.max(5, Math.round(5*MOT));
+      p.style.cssText = `position:absolute;width:${cs}px;height:${cs}px;background:${col};left:${ox}px;top:${oy}px;pointer-events:none;border-radius:1px`;
       screen.appendChild(p);
-      const ang = -Math.PI/2 + (Math.random()-.5)*1.5, v = 90+Math.random()*130;
+      const ang = -Math.PI/2 + (Math.random()-.5)*1.5, v = (90+Math.random()*130) * MOT;
       const vx = Math.cos(ang)*v, vy = Math.sin(ang)*v;
       const t0 = performance.now();
       (function step(t){
@@ -1266,7 +1271,6 @@ open build/Claudme.app</pre>
   function runAct(act, only){
     {
       const c = only || crabs[Math.floor(Math.random()*crabs.length)];
-      if (window.__promoMode) spotlight(c);
       const now = performance.now();
       if (act === 'done'){ c.state='party'; c.until=now+2600; c.hop=1; say(c, pick(LINES.done), 2600); confetti(c); }
       if (act === 'need'){ c.state='need'; c.until=now+4200; c.hop=1; say(c, pick(LINES.need), 4200); }
