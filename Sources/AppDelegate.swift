@@ -86,5 +86,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         // last, so a hook can never arrive before the things it drives exist
         hookServer.start()
+        Updater.startBackgroundChecks()
     }
 }

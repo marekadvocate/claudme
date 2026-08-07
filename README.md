@@ -211,6 +211,17 @@ one voxel model in [`tools/logo.swift`](tools/logo.swift), so they can never dri
 rebuilds and relaunches. It refuses on a dirty tree or a non-git copy rather than touching your
 work. By hand: `git pull && ./build.sh`.
 
+It also looks once a day on its own, in the background. That check **only looks** — it never
+pulls, never rebuilds and never puts a dialog in front of you; if there is something new the
+menubar entry turns orange and says how many commits. Pulling and rebuilding someone's
+checkout unasked is not a thing an app should do on its own. Switch it off with **Check for
+updates in the background**.
+
+There is no Sparkle here, which is the usual answer for a Mac app. Sparkle expects a signed,
+notarised bundle it can swap out; Claudme is source you build yourself, so the update is a
+`git fetch` and a rebuild — and adding Sparkle would mean a paid developer account, a hosted
+appcast and the project's first dependency.
+
 ---
 
 ## How it works

@@ -94,6 +94,64 @@ enum Updater {
         }
     }
 
+    // MARK: - Background checks
+
+    /// How many commits we are behind, as of the last background check. `nil` means we
+    /// haven't looked yet or couldn't reach the remote.
+    private(set) static var pendingCommits: Int?
+    static var onPendingChanged: ((Int?) -> Void)?
+
+    private static var timer: Timer?
+    private static let autoKey = "ClaudmeAutoCheck"
+
+    static var autoCheckEnabled: Bool {
+        UserDefaults.standard.object(forKey: autoKey) as? Bool ?? true
+    }
+
+    static func setAutoCheckEnabled(_ on: Bool) {
+        UserDefaults.standard.set(on, forKey: autoKey)
+        on ? startBackgroundChecks() : stopBackgroundChecks()
+        if !on { pendingCommits = nil; onPendingChanged?(nil) }
+    }
+
+    /// Checks a few times a day, quietly. It never installs anything and never puts a
+    /// dialog in front of you — pulling and rebuilding someone's checkout without asking is
+    /// not a thing an app should do on its own. All it does is set a flag the menubar shows.
+    ///
+    /// Once a day, not once an hour: a fetch against this repo measures about five seconds
+    /// of network round-trip, and nobody but the author sees it change more than once a
+    /// day. Twenty-four of those would buy no extra news.
+    static func startBackgroundChecks() {
+        guard autoCheckEnabled, timer == nil, repoRoot != nil else { return }
+        let t = Timer(timeInterval: 24 * 3600, repeats: true) { _ in checkQuietly() }
+        t.tolerance = 1800                      // let the system batch it with other wakeups
+        RunLoop.main.add(t, forMode: .common)
+        timer = t
+        // stagger the first one so it never lands during launch
+        DispatchQueue.main.asyncAfter(deadline: .now() + 90) { checkQuietly() }
+    }
+
+    static func stopBackgroundChecks() {
+        timer?.invalidate()
+        timer = nil
+    }
+
+    private static func checkQuietly() {
+        DispatchQueue.global(qos: .background).async {
+            let behind: Int?
+            switch check() {
+            case .behind(let n): behind = n
+            case .upToDate:      behind = 0
+            default:             behind = nil    // dirty tree, no remote, not a checkout
+            }
+            DispatchQueue.main.async {
+                guard behind != pendingCommits else { return }
+                pendingCommits = behind
+                onPendingChanged?(behind)
+            }
+        }
+    }
+
     // MARK: - UI
 
     /// Menubar entry point. Git and the build run off the main thread; only the alerts

@@ -164,11 +164,29 @@ final class StatusItemController: NSObject, NSMenuDelegate {
 
         menu.addItem(.separator())
 
-        let update = NSMenuItem(title: "Check for updates…", action: #selector(checkUpdates), keyEquivalent: "")
+        let n = Updater.pendingCommits ?? 0
+        let update = NSMenuItem(
+            title: n > 0 ? "Update available — \(n) commit\(n == 1 ? "" : "s")"
+                         : "Check for updates…",
+            action: #selector(checkUpdates), keyEquivalent: "")
         update.target = self
         update.toolTip = "Pulls the latest source, rebuilds and relaunches"
         update.isEnabled = true
+        if n > 0 {
+            update.attributedTitle = NSAttributedString(string: update.title, attributes: [
+                .font: NSFont.systemFont(ofSize: 13, weight: .semibold),
+                .foregroundColor: NSColor.systemOrange,
+            ])
+        }
         menu.addItem(update)
+
+        let auto = NSMenuItem(title: "Check for updates in the background",
+                              action: #selector(toggleAutoCheck), keyEquivalent: "")
+        auto.target = self
+        auto.state = Updater.autoCheckEnabled ? .on : .off
+        auto.toolTip = "Only checks. It never pulls or rebuilds without you asking."
+        auto.isEnabled = true
+        menu.addItem(auto)
 
         let contribute = NSMenuItem(title: "Contribute on GitHub", action: #selector(openRepo), keyEquivalent: "")
         contribute.target = self
@@ -264,6 +282,10 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     }
 
     @objc private func checkUpdates() { Updater.checkAndPrompt() }
+
+    @objc private func toggleAutoCheck() {
+        Updater.setAutoCheckEnabled(!Updater.autoCheckEnabled)
+    }
 
     @objc private func openRepo() {
         NSWorkspace.shared.open(URL(string: "https://github.com/marekadvocate/claudme")!)
