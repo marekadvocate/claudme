@@ -131,6 +131,9 @@ final class PetView: NSView {
     private var nextTrickAt: CFTimeInterval = CACurrentMediaTime() + Double.random(in: 300...900)
     /// only stops a rocket from bouncing wall to wall without pause
     private var traversalSettleUntil: CFTimeInterval = 0
+    /// committed direction and deadline for a Dock-clearing dash
+    private var fleeDir: CGFloat = 1
+    private var fleeUntil: CFTimeInterval = 0
     private var nextMumbleAt: CFTimeInterval = CACurrentMediaTime() + Double.random(in: 180...480)
     /// Friday and Saturday earn a deckchair; Monday earns a scowl. Checked live rather than
     /// cached, so a crab left running over midnight changes its tune with the calendar.
@@ -876,6 +879,11 @@ final class PetView: NSView {
         case .sleeping:
             crawlTowardBottom()
         case .idle, .working:
+            if isFleeing {
+                slideDir = fleeDir
+                crawl(by: 210.0 / 30.0)            // about three times a normal step
+                break
+            }
             if now < beerUntil || now < trickUntil {
                 break   // enjoying a beer / mid-trick, no crawling
             }
@@ -1017,12 +1025,20 @@ final class PetView: NSView {
     /// Get out of the way. Used when the cursor drops into the Dock's band and a crab is
     /// standing on top of an icon someone is trying to click. It stays on its edge — this
     /// is a shuffle sideways, not a panic.
+    ///
+    /// The direction is committed once and held for the whole run. Recomputing it per call
+    /// from "am I left or right of the pointer" makes a crab that ends up directly under
+    /// the cursor flip sign several times a second and vibrate on the spot instead of
+    /// leaving.
     func scurry(away dir: CGFloat) {
         guard traversal == nil, beerMug == nil, loungerLayer == nil else { return }
-        slideDir = dir >= 0 ? 1 : -1
-        slideRemaining = max(slideRemaining, 150)
-        crawl(by: 190.0 / 30.0)                    // roughly three times a normal step
+        guard CACurrentMediaTime() >= fleeUntil else { return }   // already on its way
+        fleeDir = dir >= 0 ? 1 : -1
+        fleeUntil = CACurrentMediaTime() + 1.6
     }
+
+    /// True while the crab is clearing the Dock, so the normal wander logic stands aside.
+    private var isFleeing: Bool { CACurrentMediaTime() < fleeUntil }
     var onSideWall: Bool { currentSegment == 1 || currentSegment == 3 }
 
     /// Rappel from the ceiling straight down to the floor.
