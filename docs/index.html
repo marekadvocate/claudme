@@ -1234,6 +1234,18 @@ open build/Claudme.app</pre>
     ['friday','Friday 🌴'], ['saturday','Saturday 🥴'], ['monday','Monday 😒'],
   ];
   let lastAct = -1;
+  /// In the film every crab performs the beat, lightly staggered. One crab doing it is a
+  /// coin flip on whether the viewer was looking in the right place; the whole family
+  /// doing it is the caption becoming literally true wherever you look.
+  function runActAll(act){
+    const order = [...crabs].sort((a, b) => {
+      const x = e => { const m = e.el.style.transform.match(/translate\(([-\d.]+)px,/); return m ? +m[1] : 0; };
+      return x(a) - x(b);
+    });
+    order.forEach((c, i) => setTimeout(() => runAct(act, c), i * 90));
+  }
+  window.claudmeActAll = runActAll;
+
   const shuffleBtn = document.getElementById('shuffle');
   if (shuffleBtn) shuffleBtn.addEventListener('click', () => {
     let i = Math.floor(Math.random() * ACTS.length);
@@ -1251,22 +1263,9 @@ open build/Claudme.app</pre>
   });
 
   window.claudmeAct = runAct;
-  function runAct(act){
+  function runAct(act, only){
     {
-      // In the film a random crab is no good: the caption says "it hops when it needs
-      // permission" and it happens to someone off in a corner you were not watching.
-      // Pick the one nearest the bottom centre — where the eye already is — and ring it.
-      const c = window.__promoMode
-        ? crabs.reduce((best, x) => {
-            const score = e => {
-              const m = e.el.style.transform.match(/translate\(([-\d.]+)px,\s*([-\d.]+)px\)/);
-              if (!m) return 1e9;
-              const r = screen.getBoundingClientRect();
-              return Math.abs(+m[1] + W/2 - r.width/2) + Math.abs(+m[2] - r.height) * 1.4;
-            };
-            return score(x) < score(best) ? x : best;
-          }, crabs[0])
-        : crabs[Math.floor(Math.random()*crabs.length)];
+      const c = only || crabs[Math.floor(Math.random()*crabs.length)];
       if (window.__promoMode) spotlight(c);
       const now = performance.now();
       if (act === 'done'){ c.state='party'; c.until=now+2600; c.hop=1; say(c, pick(LINES.done), 2600); confetti(c); }
@@ -1722,7 +1721,7 @@ if (new URLSearchParams(location.search).has('og')) document.body.classList.add(
     setTimeout(() => {
       if (b.card !== undefined) showCard(b.card, b.sub);
       if (b.lower !== undefined) showLower(b.lower);
-      if (b.act && typeof window.claudmeAct === 'function') window.claudmeAct(b.act);
+      if (b.act && typeof window.claudmeActAll === 'function') window.claudmeActAll(b.act);
     }, b.t * 1000);
   }
 })();
