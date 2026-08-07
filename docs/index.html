@@ -387,7 +387,7 @@
   }
   /* the credit lines now sit on the desktop itself */
   .deskcredit{
-    position:absolute;left:26px;bottom:76px;z-index:2;margin:0;max-width:none;
+    position:absolute;left:26px;bottom:34px;z-index:2;margin:0;max-width:none;
     white-space:nowrap;font:500 .7rem/1.7 var(--font);color:#6f6459;letter-spacing:.01em
   }
   .deskcredit a{color:#b0765c}
@@ -513,6 +513,7 @@
   body.promo .track > header > .wrap{padding:0;height:100%}
   body.promo .track > header .stage{margin:0;width:100%;margin-left:0;transform:none}
   body.promo .track > header .screen{height:100dvh;min-height:0}
+  body.promo .deskcredit,body.ogshot .deskcredit{bottom:76px}
   body.promo #promoReveal{
     position:fixed;inset:0;z-index:9500;background:#050404;pointer-events:none;
     opacity:1;transition:opacity .9s ease
@@ -878,10 +879,12 @@ open build/Claudme.app</pre>
 <script>
 (() => {
   // crabs scale with the stage — five 3px-grid crabs would swamp a phone
-  // Three times the old raster: at 4.5 a crab was ~50px on a 1500px screen and simply
-  // read as noise, both on the page and in the promo film. Phones get a smaller jump
-  // so the family doesn't swallow a 390px viewport.
-  const PX = innerWidth < 640 ? 6 : innerWidth < 900 ? 10 : 13;
+  // The film needs crabs big enough to read on a phone in a feed; the site does not —
+  // at that size they crowd the demo. So the raster is tripled only for the promo and
+  // share-card captures, and the site keeps the size it always had.
+  const BIG = /[?&](promo|og)=/.test(location.search);
+  const PX = BIG ? (innerWidth < 640 ? 6 : innerWidth < 900 ? 10 : 13)
+                 : (innerWidth < 640 ? 3 : innerWidth < 900 ? 3.5 : 4.5);
   const GRID_W = 11;
   const CRAB = '#d97757', INK = '#1e1e1c';
   const CAPS = ['#1f3b8a','#0d9488','#f9cc15','#7c3aed','#17a34a','#ec4899','#0ea5e9','#dc2626'];
