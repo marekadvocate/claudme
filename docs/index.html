@@ -1113,6 +1113,24 @@ open build/Claudme.app</pre>
   setInterval(() => { for (const c of crabs){ if (c._lp !== c.phase){ c._lp = c.phase; redraw(c); } } }, 60);
   requestAnimationFrame(frame);
 
+  /// A soft ring that pulses once on whichever crab is about to do something. Only ever
+  /// used by the promo capture — the site itself should not be pointing at things.
+  function spotlight(c){
+    const m = c.el.style.transform.match(/translate\(([-\d.]+)px,\s*([-\d.]+)px\)/);
+    if (!m) return;
+    const ring = document.createElement('div');
+    const size = Math.max(W, H) * 2.6;
+    ring.style.cssText =
+      `position:absolute;left:${+m[1] + W/2 - size/2}px;top:${+m[2] + H/2 - size/2}px;` +
+      `width:${size}px;height:${size}px;border-radius:50%;pointer-events:none;z-index:4;` +
+      `border:3px solid rgba(217,119,87,.85);opacity:0;transform:scale(.45);` +
+      `transition:opacity .35s ease, transform .7s cubic-bezier(.2,.9,.3,1)`;
+    screen.appendChild(ring);
+    requestAnimationFrame(() => { ring.style.opacity = '1'; ring.style.transform = 'scale(1)'; });
+    setTimeout(() => { ring.style.opacity = '0'; }, 900);
+    setTimeout(() => ring.remove(), 1500);
+  }
+
   // ---- confetti ----
   function confetti(c){
     const rect = screen.getBoundingClientRect();
@@ -1235,7 +1253,21 @@ open build/Claudme.app</pre>
   window.claudmeAct = runAct;
   function runAct(act){
     {
-      const c = crabs[Math.floor(Math.random()*crabs.length)];
+      // In the film a random crab is no good: the caption says "it hops when it needs
+      // permission" and it happens to someone off in a corner you were not watching.
+      // Pick the one nearest the bottom centre — where the eye already is — and ring it.
+      const c = window.__promoMode
+        ? crabs.reduce((best, x) => {
+            const score = e => {
+              const m = e.el.style.transform.match(/translate\(([-\d.]+)px,\s*([-\d.]+)px\)/);
+              if (!m) return 1e9;
+              const r = screen.getBoundingClientRect();
+              return Math.abs(+m[1] + W/2 - r.width/2) + Math.abs(+m[2] - r.height) * 1.4;
+            };
+            return score(x) < score(best) ? x : best;
+          }, crabs[0])
+        : crabs[Math.floor(Math.random()*crabs.length)];
+      if (window.__promoMode) spotlight(c);
       const now = performance.now();
       if (act === 'done'){ c.state='party'; c.until=now+2600; c.hop=1; say(c, pick(LINES.done), 2600); confetti(c); }
       if (act === 'need'){ c.state='need'; c.until=now+4200; c.hop=1; say(c, pick(LINES.need), 4200); }
@@ -1641,6 +1673,7 @@ if (new URLSearchParams(location.search).has('og')) document.body.classList.add(
   const q = new URLSearchParams(location.search);
   if (!q.has('promo')) return;
   document.body.classList.add('promo');
+  window.__promoMode = true;
 
   const card = document.createElement('div');
   card.id = 'promoCard';

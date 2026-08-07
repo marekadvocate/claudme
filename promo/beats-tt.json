@@ -1,9 +1,13 @@
 [
- {"t":0.8,"lower":"1. hop for permission","act":"need"},
- {"t":4.2,"lower":"2. confetti when done","act":"done"},
- {"t":7.6,"lower":"3. beer break","act":"clink"},
- {"t":11.0,"lower":"4. deckchair on Friday","act":"friday"},
- {"t":14.4,"lower":"5. rocket across","act":"rocket"},
- {"t":17.8,"lower":"6. stadium wave","act":"wave"},
- {"t":21.2,"lower":"","card":"Claudme","sub":"free · open source · mac\nlink in bio"}
+ {"t":0.6,"lower":"1. hops for permission"},
+ {"t":2.2,"act":"need"},
+ {"t":5.0,"lower":"2. confetti when it finishes"},
+ {"t":6.6,"act":"done"},
+ {"t":9.4,"lower":"3. clinks glasses"},
+ {"t":11.0,"act":"clink"},
+ {"t":13.8,"lower":"4. deckchair on a Friday"},
+ {"t":15.4,"act":"friday"},
+ {"t":18.2,"lower":"5. rockets across"},
+ {"t":19.8,"act":"rocket"},
+ {"t":22.6,"lower":"","card":"Claudme","sub":"free · open source · mac\nlink in bio"}
 ]

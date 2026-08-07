@@ -868,6 +868,15 @@ final class PetView: NSView {
             applyState(mappedState(), animated: true)
         }
 
+        // Clearing the Dock comes before the state machine: the crab most likely to be
+        // standing on it is a sleeping one, because sleeping crawls to the floor, and that
+        // is the exact case a flee nested inside .idle/.working could never reach.
+        if isFleeing {
+            slideDir = fleeDir
+            crawl(by: 210.0 / 30.0)                // about three times a normal step
+            return
+        }
+
         switch state {
         case .celebrating:
             break
@@ -879,11 +888,6 @@ final class PetView: NSView {
         case .sleeping:
             crawlTowardBottom()
         case .idle, .working:
-            if isFleeing {
-                slideDir = fleeDir
-                crawl(by: 210.0 / 30.0)            // about three times a normal step
-                break
-            }
             if now < beerUntil || now < trickUntil {
                 break   // enjoying a beer / mid-trick, no crawling
             }
