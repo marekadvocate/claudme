@@ -1,0 +1,12 @@
+[
+ {"t":1.2,"act":"need"},
+ {"t":5.0,"act":"done"},
+ {"t":8.6,"act":"clink"},
+ {"t":12.2,"act":"friday"},
+ {"t":16.0,"act":"rocket"},
+ {"t":19.4,"act":"subs"},
+ {"t":22.8,"act":"wave"},
+ {"t":26.0,"act":"trouble"},
+ {"t":29.4,"act":"beer"},
+ {"t":33.0,"act":"monday"}
+]

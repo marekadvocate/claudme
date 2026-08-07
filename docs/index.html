@@ -574,6 +574,23 @@
   body.stage .tag{font-weight:700;font-size:13px;padding:4px 9px}
   body.stage .bub{font-size:15px;padding:7px 12px;border-radius:7px}
 
+  /* ---- ?usage : the two seconds of real use that open the film ----
+     A single terminal, close, with a prompt being typed and the answer coming back — the
+     thing you were actually doing when a crab appeared on your edge. */
+  body.usage .hero,body.usage .cta,body.usage .shuffle-hint,body.usage .deskcredit,
+  body.usage .track > section,body.usage .track > footer,body.usage .dock{display:none!important}
+  body.usage .track > header{height:100dvh;padding:0}
+  body.usage .track > header > .wrap{padding:0;height:100%}
+  body.usage .track > header .stage{margin:0;width:100%;margin-left:0;transform:none}
+  body.usage .track > header .screen{height:100dvh;min-height:0}
+  body.usage .w2,body.usage .w3{display:none!important}
+  body.usage .w1{
+    left:6%!important;top:14%!important;width:88%!important;height:72%!important;
+    opacity:1!important;filter:none!important
+  }
+  body.usage .w1 pre{font:16px/1.75 var(--mono)}
+  body.usage .w1 .bar{height:30px;font-size:13px}
+
   /* ==== THEME:START ==== After Hours — The family works at night: a near-black desk lit by one warm lamp overhead, charcoal windows set in bone-warm type, and the crab's terracotta as the only colour in the room. */
   :root{
     --desk:#0a0908; --desk2:#050404;
@@ -1562,6 +1579,8 @@ open build/Claudme.app</pre>
       return d < 30 ? `${d}d ago` : new Date(iso).toLocaleDateString('en-GB',
         { day: 'numeric', month: 'short' });
     };
+    // The capture runs under a paused virtual clock; an outstanding request would stall it
+    if (window.__noNetwork) return;
     try {
       const r = await fetch('https://api.github.com/repos/marekadvocate/claudme/commits?per_page=6');
       if (!r.ok) throw new Error(r.status);
@@ -1752,6 +1771,7 @@ if (new URLSearchParams(location.search).has('og')) document.body.classList.add(
 (function promo(){
   const q = new URLSearchParams(location.search);
   if (!q.has('promo')) return;
+  window.__noNetwork = true;   // the capture must not wait on the commit feed
   document.body.classList.add('promo');
   window.__promoMode = true;
 
@@ -1815,6 +1835,37 @@ if (new URLSearchParams(location.search).has('og')) document.body.classList.add(
   document.body.classList.add('promo', 'stage');
   window.__promoMode = true;
   window.__stageMode = true;
+})();
+
+/* ---------- ?usage : two seconds of the thing you were actually doing ----------
+   One terminal, close up, a prompt typed and answered. It opens the film so the first
+   thing a stranger sees is the work, not the mascot. */
+(function usage(){
+  if (!new URLSearchParams(location.search).has('usage')) return;
+  document.body.classList.add('promo', 'usage');
+  window.__promoMode = true;
+  const pre = document.querySelector('.w1 pre');
+  if (!pre) return;
+
+  const script = [
+    ['> ', 'refactor the billing module', 34],
+    ['\n✳ ', 'Thinking…', 0],
+    ['\n✓ ', 'read 14 files', 0],
+    ['\n✓ ', 'edited invoice.ts', 0],
+    ['\n▶ ', 'running tests…', 0],
+  ];
+  pre.textContent = '';
+  let t = 250;
+  for (const [prefix, text, perChar] of script) {
+    setTimeout(() => { pre.textContent += prefix; }, t);
+    t += 90;
+    if (perChar) {
+      for (const ch of text) { const at = t; setTimeout(() => { pre.textContent += ch; }, at); t += perChar; }
+    } else {
+      setTimeout(() => { pre.textContent += text; }, t);
+      t += 260;
+    }
+  }
 })();
 
 </script>

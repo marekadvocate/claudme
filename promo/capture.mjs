@@ -41,9 +41,13 @@ ws.addEventListener('message', e => {
   const m = JSON.parse(e.data);
   if (m.id && pending.has(m.id)) { pending.get(m.id)(m.result); pending.delete(m.id); }
 });
-const send = (method, params = {}, sessionId) => new Promise(res => {
+// Every CDP call gets a ceiling. Page.captureScreenshot stops returning at a reproducible
+// point in a long capture — always the same frame — and an un-timed promise turned that into
+// a dead render that still looked alive: process up, 0% CPU, no new files for half an hour.
+const send = (method, params = {}, sessionId, ms = 4000) => new Promise(res => {
   const n = ++id;
-  pending.set(n, res);
+  const t = setTimeout(() => { pending.delete(n); res(null); }, ms);
+  pending.set(n, v => { clearTimeout(t); res(v); });
   ws.send(JSON.stringify({ id: n, method, params, sessionId }));
 });
 
@@ -58,29 +62,47 @@ await send('Emulation.setDeviceMetricsOverride',
 // Chrome only advances time when we say so, by exactly one frame at a time — every
 // setTimeout, transition and rAF steps in lockstep with what we record.
 const stepMs = 1000 / FPS;
-const budgetExpired = () => new Promise(res => {
+// Chrome occasionally stops delivering virtualTimeBudgetExpired — deterministically, in
+// this project, around the 1240th frame. Waiting on it unconditionally deadlocked the whole
+// render for half an hour at a time with the process at 0% CPU. One missed event must not
+// be able to do that, so the wait has a ceiling: past it we simply take the next frame.
+const budgetExpired = (ms = 2500) => new Promise(res => {
+  let done = false;
+  const finish = () => { if (!done) { done = true; ws.removeEventListener('message', h); res(); } };
   const h = e => {
     const m = JSON.parse(e.data);
-    if (m.method === 'Emulation.virtualTimeBudgetExpired') { ws.removeEventListener('message', h); res(); }
+    if (m.method === 'Emulation.virtualTimeBudgetExpired') finish();
   };
   ws.addEventListener('message', h);
+  setTimeout(finish, ms);
 });
 
 await send('Emulation.setVirtualTimePolicy', { policy: 'pause' }, sessionId);
+await send('Network.enable', {}, sessionId);
 await send('Page.navigate', { url }, sessionId);
 
 // let fonts, the voxel logo and the first crab layout settle before frame zero
-let wait = budgetExpired();
+let wait = budgetExpired(8000);
 await send('Emulation.setVirtualTimePolicy',
-  { policy: 'pauseIfNetworkFetchesPending', budget: 1200 }, sessionId);
+  { policy: 'pauseIfNetworkFetchesPending', budget: 1500 }, sessionId);
 await wait;
 
+// Everything is loaded; cut the network so the render-waiting policy below has nothing
+// outstanding to block on.
+await send('Network.emulateNetworkConditions',
+  { offline: true, latency: 0, downloadThroughput: 0, uploadThroughput: 0 }, sessionId);
+
+let lastFrame = null;
 const total = Math.round(SECONDS * FPS);
 for (let i = 0; i < total; i++) {
   const shot = await send('Page.captureScreenshot',
-    { format: 'png', captureBeyondViewport: false }, sessionId);
-  await writeFile(`${outDir}/f${String(i).padStart(5, '0')}.png`,
-                  Buffer.from(shot.data, 'base64'));
+    { format: 'jpeg', quality: 92, captureBeyondViewport: false }, sessionId);
+  const name = `${outDir}/f${String(i).padStart(5, '0')}.jpg`;
+  if (shot?.data) {
+    lastFrame = Buffer.from(shot.data, 'base64');
+  }
+  // a dropped frame repeats the previous one rather than stopping the film
+  await writeFile(name, lastFrame ?? Buffer.alloc(0));
   wait = budgetExpired();
   await send('Emulation.setVirtualTimePolicy',
     { policy: 'pauseIfNetworkFetchesPending', budget: stepMs }, sessionId);
