@@ -167,6 +167,7 @@ throughout: the music changes how they move, never what they're doing. Switch it
 |---|---|
 | **The family** | one row per session: rank, colour, status. Click a row to show its terminal |
 | **Language** | nineteen of them, plus the Clean / Street talk switch |
+| **Speed** | Slow motion · Normal · On something. Normal is the default; the third one is what the app used to do |
 | **Crab size** | 50% to 300%, on top of the per-state and per-model scales |
 | **Clickable over the Dock** | whether a crab on the Dock takes the click, or the icon does |
 | **Playground** | fire any of the fifteen effects on demand instead of waiting out its timer |
@@ -190,12 +191,13 @@ Every language ships in two registers, switched at the bottom of the **Language*
 
 | | |
 |---|---|
-| **Clean** | the crime film you'd watch with your parents in the room. The default |
-| **Street talk** | real underworld argot — Greek *μάγκας*, Polish *grypsera*, Russian *феня*, French *verlan*, Roman *romanesco*, cockney, Bombay *bhai*. It swears |
+| **Street talk** | real underworld argot — Greek *μάγκας*, Polish *grypsera*, Russian *феня*, French *verlan*, Roman *romanesco*, cockney, Bombay *bhai*. It swears. **The default** |
+| **Clean** | the crime film you'd watch with your parents in the room |
 
-Street talk is opt-in on purpose: the crabs sit on top of whatever you happen to be
-screen-sharing. Nothing in either register targets anyone — it's rude about the job, not about
-people. 1691 lines across both.
+The strong words ship censored — *"j_bem na to"*, *"k_rwa"*, *"f_ck"* — so a line that lands
+on a shared screen reads at a glance without being spelled out in full. Nothing in either
+register targets anyone: the crew is crude about the work and the situation, never about
+people as a class. Switch to Clean in one click if you'd rather.
 
 ## 3D mode
 

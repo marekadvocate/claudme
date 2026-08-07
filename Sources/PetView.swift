@@ -757,6 +757,10 @@ final class PetView: NSView {
 
     func celebrate() {
         guard state != .celebrating else { return }
+        // The roam area leaves just enough headroom for a resting crab; celebrating scales
+        // it to 1.3 and hops it on top of that, which pushed a ceiling crab up behind the
+        // menu bar. Come down onto the floor to do it.
+        if currentSegment == 2, traversal == nil { startRope() }
         hookWorkingUntil = 0
         applyState(.celebrating, animated: true)
         celebrateUntil = CACurrentMediaTime() + 3.2
@@ -1691,7 +1695,13 @@ final class PetView: NSView {
             // legs point at the edge: local -y rotated by θ lands at (sin θ, -cos θ)
             // bottom → 0, right wall → +90° CCW, ceiling → 180°, left wall → -90°
             let angles: [CGFloat] = [0, .pi / 2, .pi, -.pi / 2]
-            setBodyAngle(angles[seg], animated: !firstTime)
+            // Take the short way round. The raw values jump from -90° to 0° through 270°,
+            // so rounding the bottom-left corner spun the crab almost all the way over
+            // instead of turning it a quarter.
+            var target = angles[seg]
+            while target - currentAngle >  .pi { target -= 2 * .pi }
+            while target - currentAngle < -.pi { target += 2 * .pi }
+            setBodyAngle(target, animated: !firstTime)
             // On the floor the crab sits at the very bottom of the screen, so its label
             // and bubble have to go above it; on the ceiling the bubble goes below.
             let bubbleY: CGFloat = seg == 2 ? 22 : (seg == 0 ? 122 : 90)
